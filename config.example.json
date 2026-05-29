@@ -2,7 +2,7 @@
   "server_ip": "epyc2.worldhosts.fun",
   "server_port": 27681,
   "server_password": "your_server_password",
-  "manifest_url": "http://epyc2.worldhosts.fun:22499/launcher/manifest.json",
+  "manifest_url": "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json",
   "_comment": "server_ip/port для Fans подставляются автоматически; не используйте 127.0.0.1",
   "game_dir": null
 }

@@ -5,14 +5,12 @@ use std::path::PathBuf;
 /// Официальный сервер Fans (всегда используется вместо localhost в старых config.json).
 pub const FAN_SERVER_IP: &str = "epyc2.worldhosts.fun";
 pub const FAN_SERVER_PORT: u16 = 27681;
-/// Порт веб-панели (для раздачи manifest.json по HTTP).
-pub const FAN_MANIFEST_PORT: u16 = 22499;
-pub const FAN_MANIFEST_PATH: &str = "/launcher/manifest.json";
+/// URL манифеста модов на GitHub (raw).
+pub const FAN_MANIFEST_URL: &str =
+    "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json";
 
 fn default_manifest_url() -> String {
-    format!(
-        "http://{FAN_SERVER_IP}:{FAN_MANIFEST_PORT}{FAN_MANIFEST_PATH}"
-    )
+    FAN_MANIFEST_URL.to_string()
 }
 
 /// Конфигурация лаунчера, хранится в config.json рядом с исполняемым файлом.
@@ -54,7 +52,21 @@ impl LauncherConfig {
         if config.fix_legacy_local_server() {
             config.save()?;
         }
+        if config.fix_legacy_manifest_url() {
+            config.save()?;
+        }
         Ok(config)
+    }
+
+    /// Переключить старый URL манифеста (сервер :22499) на GitHub.
+    pub fn fix_legacy_manifest_url(&mut self) -> bool {
+        let legacy = self.manifest_url.contains(":22499/launcher/manifest.json")
+            || self.manifest_url.is_empty();
+        if !legacy {
+            return false;
+        }
+        self.manifest_url = default_manifest_url();
+        true
     }
 
     /// Заменить устаревший localhost/127.0.0.1 на сервер группы.

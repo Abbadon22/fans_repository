@@ -1,11 +1,16 @@
-# Манифест модов на сервере
+# Манифест модов
 
-Лаунчер **не хранит список модов внутри exe**. При каждой проверке он запрашивает JSON по URL из `config.json`:
+Лаунчер при каждой проверке запрашивает JSON по URL из `config.json`.
+
+**Репозиторий Fans:** [github.com/Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository)
+
+По умолчанию:
 
 ```json
-"manifest_url": "http://epyc2.worldhosts.fun:22499/launcher/manifest.json"
+"manifest_url": "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json"
 ```
 
+Положите в репозиторий файл **`launcher/manifest.json`** (шаблон — `public/launcher/manifest.json` в проекте лаунчера).
 ## Формат файла
 
 Массив объектов (или обёртка `{ "mods": [ ... ] }`):
@@ -22,24 +27,13 @@
 
 Шаблон для загрузки на сервер: `public/launcher/manifest.json` в репозитории лаунчера.
 
-## Как раздать файл с сервера
+## Как раздать файл
 
-Нужен **обычный HTTP(S)** — игра по порту `27681` манифест не отдаёт.
+Основной вариант — **GitHub raw** (см. ниже). Альтернативы:
 
-Варианты:
-
-1. **Веб-панель 7DTD (порт 22499)** — если хостинг позволяет положить статику в корень сайта, разместите `launcher/manifest.json` так, чтобы открывался по URL из `manifest_url`.
-2. **Nginx / Apache** рядом с сервером — alias на папку с `manifest.json`.
-3. **Любой HTTPS** (GitHub raw, CDN, Яндекс.Диск API в поле `url` модов) — укажите полный URL в `manifest_url` в `config.json` у игроков.
-
-Проверка с ПК:
-
-```text
-curl -I http://epyc2.worldhosts.fun:22499/launcher/manifest.json
-```
-
-Должен быть ответ **200** и `Content-Type: application/json` (желательно).
-
+1. **Nginx / Apache** на сервере игры
+2. **Веб-панель 7DTD** (порт 22499), если хостинг отдаёт статику
+3. Любой другой HTTPS URL в `manifest_url`
 ## Поведение лаунчера
 
 1. Скачать `manifest_url`
@@ -69,22 +63,25 @@ curl -I http://epyc2.worldhosts.fun:22499/launcher/manifest.json
 
 Репозиторий и релизы должны быть **публичными**, иначе лаунчер не скачает без токена.
 
-### Манифест на GitHub
-
-Можно отдавать JSON так:
+### Манифест на GitHub (Fans)
 
 ```text
-https://raw.githubusercontent.com/USER/REPO/main/launcher/manifest.json
+https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json
 ```
 
-И в `config.json` у игроков:
+В `config.json` (уже по умолчанию в новых установках):
 
 ```json
-"manifest_url": "https://raw.githubusercontent.com/USER/REPO/main/launcher/manifest.json"
+"manifest_url": "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json"
 ```
 
-После `git push` обновление списка модов у всех — по кнопке «Обновить» (кэш GitHub иногда задерживает raw на 1–2 минуты).
+Проверка:
 
+```text
+curl -I https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json
+```
+
+Ответ **200**, тело — JSON-массив модов.
 ### Проверка ссылки на мод
 
 В браузере откройте `url` из манифеста — должен **сразу начаться скачивание** zip, без страницы логина GitHub.

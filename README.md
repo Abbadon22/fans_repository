@@ -16,7 +16,8 @@ npm install
 
 ## Настройка перед сборкой
 
-1. **Манифест модов на сервере** — положите `public/launcher/manifest.json` на HTTP (см. `docs/MANIFEST_SERVER.ru.md`). По умолчанию лаунчер запрашивает `http://epyc2.worldhosts.fun:22499/launcher/manifest.json`. Локальный `public/manifest.json` — только запасной вариант.
+1. **Манифест модов** — в репозитории [Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository): файл `launcher/manifest.json` (шаблон: `public/launcher/manifest.json` в этом проекте). Лаунчер по умолчанию запрашивает:
+   `https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json`
 2. **`config.json`** — создаётся автоматически при первом запуске рядом с `.exe` лаунчера. Скопируйте `config.example.json` и задайте:
    - `server_ip`, `server_port`, `server_password`
    - `game_dir` — заполнится после выбора папки в UI
