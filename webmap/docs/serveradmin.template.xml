@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Фрагмент для вставки в ваш serveradmin.xml (формат V2.1+: атрибут secret, не token) -->
+<adminTools>
+  <apitokens>
+    <token name="web" secret="PickAnySecret123" permission_level="2000" />
+  </apitokens>
+  <webmodules>
+    <module name="web.map" permission_level="2000" />
+    <module name="webapi.getplayersonline" permission_level="2000" />
+    <module name="webapi.getplayerslocation" permission_level="2000" />
+    <module name="webapi.getlandclaims" permission_level="2000" />
+    <module name="webapi.gethostilelocation" permission_level="2000" />
+    <module name="webapi.getstats" permission_level="2000" />
+  </webmodules>
+</adminTools>

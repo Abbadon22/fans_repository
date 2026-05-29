@@ -1,0 +1,186 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #0f1115;
+  color: #e5e7eb;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100%;
+}
+
+.sidebar {
+  overflow-y: auto;
+  border-right: 1px solid #2a2f3a;
+  background: #151820;
+  padding: 16px;
+}
+
+.sidebar-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.sidebar-header p {
+  margin: 4px 0 0;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.panel {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  background: #1a1f28;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+.panel button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #374151;
+  background: #232a35;
+  color: #f3f4f6;
+  cursor: pointer;
+}
+
+.panel button:hover {
+  background: #2d3644;
+}
+
+.panel button.active {
+  border-color: #f59e0b;
+  background: #3b2f14;
+}
+
+.player-list,
+.marker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+
+.player-list li,
+.marker-list li {
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.map-hint {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dot.online {
+  background: #22c55e;
+}
+
+.dot.offline {
+  background: #6b7280;
+}
+
+.dot.hostile {
+  background: #ef4444;
+}
+
+.dot.marker {
+  background: #f59e0b;
+}
+
+.swatch.claim {
+  width: 12px;
+  height: 8px;
+  border: 2px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
+  display: inline-block;
+}
+
+.legend p {
+  margin: 4px 0;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-pane {
+  position: relative;
+  min-height: 0;
+}
+
+.loading-screen {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #9ca3af;
+}
+
+.alert.error {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #3f1d1d;
+  border: 1px solid #7f1d1d;
+  color: #fecaca;
+  font-size: 0.85rem;
+}
+
+.help-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.help-list li {
+  margin-bottom: 4px;
+}
+
+.help-list code {
+  font-size: 0.75rem;
+  color: #fde68a;
+}
+
+.leaflet-container {
+  /* Не чёрный — иначе пустые (неисследованные) тайлы выглядят как «ничего не грузится» */
+  background: #2a3140;
+  font-family: inherit;
+}

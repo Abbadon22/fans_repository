@@ -1,0 +1,14 @@
+{
+  "serverHost": "epyc2.worldhosts.fun",
+  "webPort": 22499,
+  "basePath": "",
+  "apiTokenName": "web",
+  "apiTokenSecret": "FansMap_2026_Secret",
+  "apiMode": "auto",
+  "mapSize": 6144,
+  "maxZoom": 4,
+  "pollIntervalMs": 3000,
+  "showLandClaims": true,
+  "showHostiles": true,
+  "showOfflinePlayers": true
+}

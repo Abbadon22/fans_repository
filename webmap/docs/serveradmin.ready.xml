@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	This file holds the settings for who is banned, whitelisted, admins and server command permissions.
+	Редактируйте при ОСТАНОВЛЕННОМ сервере.
+	Секрет API для webmap: FansMap_2026_Secret (смените на свой и укажите в webmap/public/config.json)
+-->
+<adminTools>
+  <users>
+    <!-- Раскомментируйте и подставьте свой SteamID64 для админки в игре (permission_level="0") -->
+    <!-- <user platform="Steam" userid="76561198021925107" name="Admin" permission_level="0" /> -->
+  </users>
+  <whitelist />
+  <blacklist />
+  <commands>
+    <permission cmd="chunkcache" permission_level="1000" />
+    <permission cmd="createwebuser" permission_level="1000" />
+    <permission cmd="cvar" permission_level="1000" />
+    <permission cmd="debugshot" permission_level="1000" />
+    <permission cmd="debugweather" permission_level="1000" />
+    <permission cmd="decomgr" permission_level="1000" />
+    <permission cmd="getgamepref" permission_level="1000" />
+    <permission cmd="getgamestat" permission_level="1000" />
+    <permission cmd="getlogpath" permission_level="1000" />
+    <permission cmd="getoptions" permission_level="1000" />
+    <permission cmd="gettime" permission_level="1000" />
+    <permission cmd="gfx" permission_level="1000" />
+    <permission cmd="graph" permission_level="1000" />
+    <permission cmd="help" permission_level="1000" />
+    <permission cmd="listplayerids" permission_level="1000" />
+    <permission cmd="listthreads" permission_level="1000" />
+    <permission cmd="loot" permission_level="1000" />
+    <permission cmd="memcl" permission_level="1000" />
+    <permission cmd="meshdatamanager" permission_level="1000" />
+    <permission cmd="settempunit" permission_level="1000" />
+    <permission cmd="uioptions" permission_level="1000" />
+  </commands>
+
+  <!-- Токен для Fans WebMap / API (имя + secret = логин/пароль в config.json) -->
+  <apitokens>
+    <token name="web" secret="FansMap_2026_Secret" permission_level="2000" />
+  </apitokens>
+
+  <!-- 2000 = доступ без Steam-логина (для карты и polling игроков) -->
+  <webmodules>
+  <!-- Vanilla Web Dashboard (TFP v2.1+) — ваш сервер -->
+    <module name="web.map" permission_level="2000" />
+    <module name="webapi.player" permission_level="2000" />
+  <!-- Alloc Server Fixes (если установлен мод) -->
+    <module name="webapi.getplayersonline" permission_level="2000" />
+    <module name="webapi.getplayerslocation" permission_level="2000" />
+    <module name="webapi.getlandclaims" permission_level="2000" />
+    <module name="webapi.gethostilelocation" permission_level="2000" />
+    <module name="webapi.getstats" permission_level="2000" />
+  </webmodules>
+
+  <webusers />
+</adminTools>
