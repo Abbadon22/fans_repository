@@ -23,7 +23,7 @@ export function PlayButton({
         disabled={disabled || loading}
         className="btn-play flex-1"
       >
-        {loading ? loadingLabel : "▶  Подключиться (Steam)"}
+        {loading ? loadingLabel : "▶  Играть"}
       </button>
       {showRetry && onRetry && (
         <button type="button" onClick={onRetry} disabled={loading} className="btn-soft px-5 py-3">

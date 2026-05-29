@@ -30,7 +30,6 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -39,17 +38,5 @@
       "icons/icon.ico"
     ],
     "resources": ["../manifest.json", "../public/manifest.json"]
-  },
-  "plugins": {
-    "updater": {
-      "active": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBRTAwNDhGQkVBQ0U3NjgKUldSbzU2eStqd1RnV2xLc0dKR0huWE5aMk1ZTG02N1N5QUxadHVBSllqTk5EYkVpNWdpdEdWWksK",
-      "endpoints": [
-        "https://github.com/Abbadon22/fans_repository/releases/latest/download/latest.json"
-      ],
-      "windows": {
-        "installMode": "passive"
-      }
-    }
   }
 }

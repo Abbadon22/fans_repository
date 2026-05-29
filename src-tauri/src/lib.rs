@@ -10,9 +10,7 @@ pub fn run() {
     let initial_config = LauncherConfig::load().unwrap_or_default();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState {
             config: tokio::sync::Mutex::new(initial_config),
         })

@@ -9,7 +9,6 @@ import type {
   ManifestLoadResult,
   ModCheckResult,
 } from "../types";
-import { checkAppUpdate } from "./useAppUpdater";
 
 interface DownloadProgressPayload {
   percent: number;
@@ -313,11 +312,11 @@ export function useLauncher() {
         appendLog(`Конфиг: ${configPath}`);
         appendLog(`Манифест: ${manifestLoaded.source} (${manifestLoaded.entries.length} модов)`);
 
-        void checkAppUpdate(appendLog);
-
         if (!config.game_dir) {
-          setStatus("Выберите папку с игрой");
-          appendLog("Папка игры не задана — укажите её во вкладке «Настройки»");
+          setStatus("Выберите папку с 7DaysToDie.exe");
+          appendLog("Первый запуск — откроется выбор папки с игрой");
+          await new Promise((r) => setTimeout(r, 400));
+          await selectFolder();
           return;
         }
 
@@ -330,7 +329,7 @@ export function useLauncher() {
         patch({ status: "Ошибка инициализации", phase: "error" });
       }
     })();
-  }, [appendLog, patch, runModPipeline, setStatus]);
+  }, [appendLog, patch, runModPipeline, selectFolder, setStatus]);
 
   return {
     state,
@@ -342,6 +341,5 @@ export function useLauncher() {
     openConfigFolder,
     savePassword,
     clearLogs,
-    checkAppUpdate: () => checkAppUpdate(appendLog),
   };
 }

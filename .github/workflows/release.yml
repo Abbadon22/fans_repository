@@ -36,7 +36,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           tagName: v__VERSION__
           releaseName: Fans Launcher v__VERSION__
@@ -44,8 +43,7 @@ jobs:
             ## Fans Launcher v__VERSION__
 
             - Скачайте **Fans Launcher_*_x64-setup.exe** (установщик Windows)
-            - `latest.json` — для автообновления уже установленных копий
             - Список модов: [manifest.json](https://github.com/Abbadon22/fans_repository/blob/main/manifest.json)
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: false

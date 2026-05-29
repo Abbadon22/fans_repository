@@ -4,9 +4,7 @@ use crate::mods::{
     ModCheckResult,
 };
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
-use tauri_plugin_shell::ShellExt;
 use tokio::sync::Mutex;
 
 /// Глобальное состояние приложения (кэш конфига).
@@ -28,20 +26,6 @@ fn build_steam_connect_url(ip: &str, port: u16, password: &str) -> String {
     } else {
         format!("steam://connect/{endpoint}/{}", urlencoding::encode(pw))
     }
-}
-
-/// Поиск steam.exe в стандартных местах Windows.
-fn find_steam_exe() -> Option<PathBuf> {
-    let mut candidates: Vec<PathBuf> = Vec::new();
-
-    if let Ok(pf86) = std::env::var("PROGRAMFILES(X86)") {
-        candidates.push(PathBuf::from(pf86).join("Steam").join("steam.exe"));
-    }
-    if let Ok(pf) = std::env::var("PROGRAMFILES") {
-        candidates.push(PathBuf::from(pf).join("Steam").join("steam.exe"));
-    }
-
-    candidates.into_iter().find(|path| path.is_file())
 }
 
 /// Выбор папки с игрой через системный диалог.
@@ -178,56 +162,23 @@ pub async fn download_and_install_mods(
     result
 }
 
-/// Запустить Steam и открыть `steam://connect/` (единственный поддерживаемый автовход).
+/// Запустить 7DaysToDie.exe из папки игры.
 #[tauri::command]
 pub async fn launch_game(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let config = state.config.lock().await.clone();
-    config.validate_game_exe()?;
+    let exe = config.validate_game_exe()?;
+    let game_dir = exe
+        .parent()
+        .ok_or_else(|| "Не удалось определить папку игры".to_string())?;
 
-    let steam_exe = find_steam_exe().ok_or_else(|| {
-        "Steam не найден. Автоподключение работает только со Steam-версией 7 Days to Die."
-            .to_string()
-    })?;
+    emit_log(&app, &format!("Запуск: {}", exe.display()));
 
-    if config.server_password.trim().is_empty() {
-        emit_log(&app, "⚠ Пароль сервера пуст — задайте его в «Настройки»");
-    }
-
-    emit_log(&app, "Запуск Steam…");
-    std::process::Command::new(&steam_exe)
+    std::process::Command::new(&exe)
+        .current_dir(game_dir)
         .spawn()
-        .map_err(|e| format!("Не удалось запустить Steam: {e}"))?;
+        .map_err(|e| format!("Не удалось запустить игру: {e}"))?;
 
-    tokio::time::sleep(Duration::from_millis(2500)).await;
-
-    let url = build_steam_connect_url(
-        &config.server_ip,
-        config.server_port,
-        &config.server_password,
-    );
-    emit_log(
-        &app,
-        &format!(
-            "Открываю steam://connect/{}:{} …",
-            config.server_ip, config.server_port
-        ),
-    );
-
-    if let Err(e) = app.shell().open(&url, None) {
-        #[cfg(target_os = "windows")]
-        {
-            std::process::Command::new("cmd")
-                .args(["/C", "start", "", &url])
-                .spawn()
-                .map_err(|e2| format!("Steam-ссылка не открылась: {e}; fallback: {e2}"))?;
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            return Err(format!("Не удалось открыть Steam-ссылку: {e}"));
-        }
-    }
-
-    Ok("Запрос отправлен в Steam — дождитесь загрузки и входа на сервер".to_string())
+    Ok("Игра запущена — подключитесь к серверу вручную".to_string())
 }
 
 /// Ссылка steam://connect для ярлыка / ручного копирования.

@@ -5,13 +5,10 @@ use std::path::PathBuf;
 /// Официальный сервер Fans (всегда используется вместо localhost в старых config.json).
 pub const FAN_SERVER_IP: &str = "epyc2.worldhosts.fun";
 pub const FAN_SERVER_PORT: u16 = 27681;
+pub const FAN_DEFAULT_PASSWORD: &str = "2281337";
 /// URL манифеста модов на GitHub (raw, корень репозитория).
 pub const FAN_MANIFEST_URL: &str =
     "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";
-
-/// GitHub Releases — автообновление лаунчера.
-pub const FAN_UPDATER_ENDPOINT: &str =
-    "https://github.com/Abbadon22/fans_repository/releases/latest/download/latest.json";
 
 fn default_manifest_url() -> String {
     FAN_MANIFEST_URL.to_string()
@@ -59,6 +56,9 @@ impl LauncherConfig {
         if config.fix_legacy_manifest_url() {
             config.save()?;
         }
+        if config.fix_legacy_default_password() {
+            config.save()?;
+        }
         Ok(config)
     }
 
@@ -71,6 +71,18 @@ impl LauncherConfig {
             return false;
         }
         self.manifest_url = default_manifest_url();
+        true
+    }
+
+    /// Подставить пароль по умолчанию, если в config остался шаблон или пусто.
+    pub fn fix_legacy_default_password(&mut self) -> bool {
+        let placeholder = self.server_password.trim().is_empty()
+            || self.server_password == "changeme"
+            || self.server_password == "your_server_password";
+        if !placeholder {
+            return false;
+        }
+        self.server_password = FAN_DEFAULT_PASSWORD.to_string();
         true
     }
 
@@ -101,7 +113,7 @@ impl LauncherConfig {
         Self {
             server_ip: FAN_SERVER_IP.to_string(),
             server_port: FAN_SERVER_PORT,
-            server_password: "changeme".to_string(),
+            server_password: FAN_DEFAULT_PASSWORD.to_string(),
             manifest_url: default_manifest_url(),
             game_dir: None,
         }

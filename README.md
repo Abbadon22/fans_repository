@@ -1,6 +1,6 @@
 # Fans Launcher — 7 Days to Die
 
-Лаунчер для закрытой группы (Steam-версия): выбор папки игры, проверка/установка модов по манифесту, подключение через `steam://connect/IP:PORT/пароль` (официальный способ; параметры `-connect` у клиента 7DTD не работают).
+Лаунчер для закрытой группы (Steam-версия): выбор папки игры, проверка/установка модов по манифесту, запуск `7DaysToDie.exe`. Подключение к серверу — вручную в игре (автовход через Steam можно вернуть позже).
 
 ## Требования
 
@@ -16,8 +16,8 @@ npm install
 
 ## Настройка перед сборкой
 
-1. **Манифест модов** — в репозитории [Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository): файл `launcher/manifest.json` (шаблон: `public/launcher/manifest.json` в этом проекте). Лаунчер по умолчанию запрашивает:
-   `https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json`
+1. **Манифест модов** — в репозитории [Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository): файл `manifest.json` в корне. Лаунчер по умолчанию запрашивает:
+   `https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json`
 2. **`config.json`** — создаётся автоматически при первом запуске рядом с `.exe` лаунчера. Скопируйте `config.example.json` и задайте:
    - `server_ip`, `server_port`, `server_password`
    - `game_dir` — заполнится после выбора папки в UI
@@ -75,21 +75,11 @@ npm run tauri:build
 
 Готовый установщик: `src-tauri/target/release/bundle/nsis/`.
 
-### GitHub Releases и автообновление
+### Раздача друзьям
 
-Код и релизы: [github.com/Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository)
-
-- **`manifest.json`** в корне репо — список модов
-- **Release `v*`** — установщик + `latest.json` для автообновления лаунчера
-
-Инструкция: [docs/GITHUB_RELEASE.ru.md](docs/GITHUB_RELEASE.ru.md)
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Перед первым CI-релизом добавьте секрет `TAURI_SIGNING_PRIVATE_KEY` (см. docs).
+- Соберите `npm run tauri:build` и отправьте **`.exe` установщик**
+- Список модов обновляется через **`manifest.json`** в GitHub — без переустановки лаунчера
+- Инструкция: [docs/GITHUB_RELEASE.ru.md](docs/GITHUB_RELEASE.ru.md)
 
 Рядом с собранным `fans-launcher.exe` (или в папке установки) лежит **`config.json`** — редактируйте параметры сервера там же.
 
