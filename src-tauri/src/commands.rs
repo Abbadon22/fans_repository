@@ -1,7 +1,7 @@
 use crate::config::LauncherConfig;
 use crate::mods::{
-    check_mods_internal, download_and_install_mods_internal, load_manifest, ModCheckResult,
-    ManifestLoadResult,
+    check_mods_internal, download_and_install_mods_internal, load_manifest, ManifestLoadResult,
+    ModCheckResult,
 };
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -41,9 +41,7 @@ fn find_steam_exe() -> Option<PathBuf> {
         candidates.push(PathBuf::from(pf).join("Steam").join("steam.exe"));
     }
 
-    candidates
-        .into_iter()
-        .find(|path| path.is_file())
+    candidates.into_iter().find(|path| path.is_file())
 }
 
 /// Выбор папки с игрой через системный диалог.
@@ -71,10 +69,7 @@ pub async fn select_game_folder(
     config.game_dir = Some(path.to_string_lossy().into_owned());
     config.save()?;
 
-    emit_log(
-        &app,
-        &format!("Папка игры сохранена: {}", path.display()),
-    );
+    emit_log(&app, &format!("Папка игры сохранена: {}", path.display()));
 
     Ok(path.to_string_lossy().into_owned())
 }
@@ -89,9 +84,7 @@ pub async fn set_game_folder(
     let path_buf = Path::new(&path);
     let exe = path_buf.join("7DaysToDie.exe");
     if !exe.is_file() {
-        return Err(format!(
-            "В папке «{path}» не найден 7DaysToDie.exe"
-        ));
+        return Err(format!("В папке «{path}» не найден 7DaysToDie.exe"));
     }
 
     let mut config = state.config.lock().await;
@@ -132,7 +125,14 @@ pub async fn check_mods(
     config.game_dir_path()?;
 
     let loaded = load_manifest(&app, &config).await?;
-    emit_log(&app, &format!("Манифест: {} ({} модов)", loaded.source, loaded.entries.len()));
+    emit_log(
+        &app,
+        &format!(
+            "Манифест: {} ({} модов)",
+            loaded.source,
+            loaded.entries.len()
+        ),
+    );
     let result = check_mods_internal(&config, &loaded.entries);
 
     if result.ok {
@@ -180,15 +180,13 @@ pub async fn download_and_install_mods(
 
 /// Запустить Steam и открыть `steam://connect/` (единственный поддерживаемый автовход).
 #[tauri::command]
-pub async fn launch_game(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn launch_game(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let config = state.config.lock().await.clone();
     config.validate_game_exe()?;
 
     let steam_exe = find_steam_exe().ok_or_else(|| {
-        "Steam не найден. Автоподключение работает только со Steam-версией 7 Days to Die.".to_string()
+        "Steam не найден. Автоподключение работает только со Steam-версией 7 Days to Die."
+            .to_string()
     })?;
 
     if config.server_password.trim().is_empty() {
@@ -202,7 +200,11 @@ pub async fn launch_game(
 
     tokio::time::sleep(Duration::from_millis(2500)).await;
 
-    let url = build_steam_connect_url(&config.server_ip, config.server_port, &config.server_password);
+    let url = build_steam_connect_url(
+        &config.server_ip,
+        config.server_port,
+        &config.server_password,
+    );
     emit_log(
         &app,
         &format!(
@@ -270,7 +272,11 @@ pub async fn get_manifest(
     let loaded = load_manifest(&app, &config).await?;
     emit_log(
         &app,
-        &format!("Манифест: {} ({} модов)", loaded.source, loaded.entries.len()),
+        &format!(
+            "Манифест: {} ({} модов)",
+            loaded.source,
+            loaded.entries.len()
+        ),
     );
     Ok(loaded)
 }

@@ -73,7 +73,23 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-Готовый установщик/EXE: `src-tauri/target/release/bundle/`.
+Готовый установщик: `src-tauri/target/release/bundle/nsis/`.
+
+### GitHub Releases и автообновление
+
+Код и релизы: [github.com/Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository)
+
+- **`manifest.json`** в корне репо — список модов
+- **Release `v*`** — установщик + `latest.json` для автообновления лаунчера
+
+Инструкция: [docs/GITHUB_RELEASE.ru.md](docs/GITHUB_RELEASE.ru.md)
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Перед первым CI-релизом добавьте секрет `TAURI_SIGNING_PRIVATE_KEY` (см. docs).
 
 Рядом с собранным `fans-launcher.exe` (или в папке установки) лежит **`config.json`** — редактируйте параметры сервера там же.
 

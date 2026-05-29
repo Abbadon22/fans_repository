@@ -4,7 +4,7 @@ export const FAN_SERVER_PORT = 27681;
 
 /** Манифест модов на GitHub (raw). */
 export const FAN_MANIFEST_URL =
-  "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json";
+  "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";
 
 export function isLegacyLocalServer(ip: string): boolean {
   const v = ip.trim().toLowerCase();

@@ -26,6 +26,8 @@ dist-ssr
 # Tauri
 src-tauri/target
 src-tauri/gen
+src-tauri/keys/*.key
+!src-tauri/keys/*.key.pub
 
 # Локальный конфиг с паролем сервера (создаётся при первом запуске)
 config.json

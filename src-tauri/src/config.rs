@@ -5,9 +5,13 @@ use std::path::PathBuf;
 /// Официальный сервер Fans (всегда используется вместо localhost в старых config.json).
 pub const FAN_SERVER_IP: &str = "epyc2.worldhosts.fun";
 pub const FAN_SERVER_PORT: u16 = 27681;
-/// URL манифеста модов на GitHub (raw).
+/// URL манифеста модов на GitHub (raw, корень репозитория).
 pub const FAN_MANIFEST_URL: &str =
-    "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/launcher/manifest.json";
+    "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";
+
+/// GitHub Releases — автообновление лаунчера.
+pub const FAN_UPDATER_ENDPOINT: &str =
+    "https://github.com/Abbadon22/fans_repository/releases/latest/download/latest.json";
 
 fn default_manifest_url() -> String {
     FAN_MANIFEST_URL.to_string()
@@ -45,8 +49,8 @@ impl LauncherConfig {
             default.save()?;
             return Ok(default);
         }
-        let content = fs::read_to_string(&path)
-            .map_err(|e| format!("Ошибка чтения config.json: {e}"))?;
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("Ошибка чтения config.json: {e}"))?;
         let mut config: Self =
             serde_json::from_str(&content).map_err(|e| format!("Некорректный config.json: {e}"))?;
         if config.fix_legacy_local_server() {
@@ -60,7 +64,8 @@ impl LauncherConfig {
 
     /// Переключить старый URL манифеста (сервер :22499) на GitHub.
     pub fn fix_legacy_manifest_url(&mut self) -> bool {
-        let legacy = self.manifest_url.contains(":22499/launcher/manifest.json")
+        let legacy = self.manifest_url.contains(":22499/")
+            || self.manifest_url.contains("/launcher/manifest.json")
             || self.manifest_url.is_empty();
         if !legacy {
             return false;
@@ -108,7 +113,9 @@ impl LauncherConfig {
             .game_dir
             .as_ref()
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| "Папка с игрой не выбрана. Укажите каталог с 7DaysToDie.exe".to_string())?;
+            .ok_or_else(|| {
+                "Папка с игрой не выбрана. Укажите каталог с 7DaysToDie.exe".to_string()
+            })?;
         Ok(PathBuf::from(dir))
     }
 

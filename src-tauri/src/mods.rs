@@ -130,7 +130,9 @@ fn parse_manifest_json(content: &str) -> Result<Vec<ModManifestEntry>, String> {
     }
 
     for entry in &entries {
-        if entry.name.trim().is_empty() || entry.url.trim().is_empty() || entry.sha256.trim().is_empty()
+        if entry.name.trim().is_empty()
+            || entry.url.trim().is_empty()
+            || entry.sha256.trim().is_empty()
         {
             return Err(format!("некорректная запись мода: {:?}", entry.name));
         }
@@ -158,8 +160,7 @@ fn save_manifest_cache(entries: &[ModManifestEntry]) -> Result<(), String> {
 
 fn load_manifest_cache() -> Result<Vec<ModManifestEntry>, String> {
     let path = manifest_cache_path()?;
-    let content = fs::read_to_string(&path)
-        .map_err(|e| format!("кэш {}: {e}", path.display()))?;
+    let content = fs::read_to_string(&path).map_err(|e| format!("кэш {}: {e}", path.display()))?;
     parse_manifest_json(&content)
 }
 
@@ -195,23 +196,23 @@ fn load_manifest_local(app: &AppHandle) -> Result<Vec<ModManifestEntry>, String>
 }
 
 fn parse_manifest_file(path: &Path) -> Result<Vec<ModManifestEntry>, String> {
-    let content =
-        fs::read_to_string(path).map_err(|e| format!("не удалось прочитать {}: {e}", path.display()))?;
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("не удалось прочитать {}: {e}", path.display()))?;
     parse_manifest_json(&content)
 }
 
 /// Проверить наличие модов и соответствие SHA256 маркерным файлам.
-pub fn check_mods_internal(config: &LauncherConfig, manifest: &[ModManifestEntry]) -> ModCheckResult {
+pub fn check_mods_internal(
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+) -> ModCheckResult {
     let mut missing = Vec::new();
 
     let mods_dir = match config.mods_dir() {
         Ok(p) => p,
         Err(e) => {
             missing.push(e);
-            return ModCheckResult {
-                ok: false,
-                missing,
-            };
+            return ModCheckResult { ok: false, missing };
         }
     };
 
@@ -236,7 +237,10 @@ pub fn check_mods_internal(config: &LauncherConfig, manifest: &[ModManifestEntry
             continue;
         }
 
-        let stored = fs::read_to_string(&marker).unwrap_or_default().trim().to_lowercase();
+        let stored = fs::read_to_string(&marker)
+            .unwrap_or_default()
+            .trim()
+            .to_lowercase();
         let expected = entry.sha256.trim().to_lowercase();
         if stored != expected {
             missing.push(format!(
@@ -259,8 +263,7 @@ pub async fn download_and_install_mods_internal(
     manifest: Vec<ModManifestEntry>,
 ) -> Result<String, String> {
     let mods_dir = config.mods_dir()?;
-    fs::create_dir_all(&mods_dir)
-        .map_err(|e| format!("Не удалось создать папку Mods: {e}"))?;
+    fs::create_dir_all(&mods_dir).map_err(|e| format!("Не удалось создать папку Mods: {e}"))?;
 
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(10))
@@ -272,12 +275,7 @@ pub async fn download_and_install_mods_internal(
     for (index, entry) in manifest.iter().enumerate() {
         emit_log(
             &app,
-            &format!(
-                "[{}/{}] Загрузка мода «{}»…",
-                index + 1,
-                total,
-                entry.name
-            ),
+            &format!("[{}/{}] Загрузка мода «{}»…", index + 1, total, entry.name),
         );
 
         let zip_bytes =
@@ -332,7 +330,9 @@ fn emit_download_progress(app: &AppHandle, payload: DownloadProgressPayload) {
 async fn resolve_download_url(client: &reqwest::Client, url: &str) -> Result<String, String> {
     let normalized_url = if url.contains("disk.yandex.ru/") {
         let encoded = urlencoding::encode(url);
-        format!("https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={encoded}")
+        format!(
+            "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={encoded}"
+        )
     } else {
         url.to_string()
     };
@@ -396,11 +396,7 @@ async fn download_with_progress(
         .map_err(|e| format!("Сетевая ошибка при загрузке: {e}"))?;
 
     if !response.status().is_success() {
-        return Err(format!(
-            "HTTP {} при загрузке {}",
-            response.status(),
-            url
-        ));
+        return Err(format!("HTTP {} при загрузке {}", response.status(), url));
     }
 
     let total_size = response.content_length().unwrap_or(0);
@@ -416,7 +412,8 @@ async fn download_with_progress(
         downloaded += chunk.len() as u64;
         buffer.extend_from_slice(&chunk);
 
-        if last_emit.elapsed() >= Duration::from_millis(200) || total_size > 0 && downloaded >= total_size
+        if last_emit.elapsed() >= Duration::from_millis(200)
+            || total_size > 0 && downloaded >= total_size
         {
             let elapsed = started.elapsed().as_secs_f64().max(0.001);
             let speed_bps = downloaded as f64 / elapsed;
@@ -501,7 +498,12 @@ fn extract_zip_safe(zip_bytes: &[u8], mods_dir: &Path) -> Result<(), String> {
         // Убираем ведущие компоненты пути (защита от абсолютных путей в архиве)
         let safe_relative: PathBuf = entry_path
             .components()
-            .filter(|c| !matches!(c, Component::ParentDir | Component::RootDir | Component::Prefix(_)))
+            .filter(|c| {
+                !matches!(
+                    c,
+                    Component::ParentDir | Component::RootDir | Component::Prefix(_)
+                )
+            })
             .collect();
 
         if safe_relative.as_os_str().is_empty() {
@@ -516,12 +518,8 @@ fn extract_zip_safe(zip_bytes: &[u8], mods_dir: &Path) -> Result<(), String> {
             if let Some(parent) = out_path.parent() {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            let mut outfile = File::create(&out_path).map_err(|e| {
-                format!(
-                    "Нет прав на запись {}: {e}",
-                    out_path.display()
-                )
-            })?;
+            let mut outfile = File::create(&out_path)
+                .map_err(|e| format!("Нет прав на запись {}: {e}", out_path.display()))?;
             std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
     }

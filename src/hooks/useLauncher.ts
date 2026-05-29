@@ -6,9 +6,10 @@ import type {
   LauncherConfig,
   LauncherPhase,
   LauncherState,
-  ModCheckResult,
   ManifestLoadResult,
+  ModCheckResult,
 } from "../types";
+import { checkAppUpdate } from "./useAppUpdater";
 
 interface DownloadProgressPayload {
   percent: number;
@@ -312,6 +313,8 @@ export function useLauncher() {
         appendLog(`Конфиг: ${configPath}`);
         appendLog(`Манифест: ${manifestLoaded.source} (${manifestLoaded.entries.length} модов)`);
 
+        void checkAppUpdate(appendLog);
+
         if (!config.game_dir) {
           setStatus("Выберите папку с игрой");
           appendLog("Папка игры не задана — укажите её во вкладке «Настройки»");
@@ -339,5 +342,6 @@ export function useLauncher() {
     openConfigFolder,
     savePassword,
     clearLogs,
+    checkAppUpdate: () => checkAppUpdate(appendLog),
   };
 }
