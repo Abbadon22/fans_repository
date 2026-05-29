@@ -1,7 +1,12 @@
 use crate::config::LauncherConfig;
-use crate::mods::{check_mods_internal, download_and_install_mods_internal, load_manifest, ModCheckResult};
+use crate::mods::{
+    check_mods_internal, download_and_install_mods_internal, load_manifest, ModCheckResult,
+    ManifestLoadResult,
+};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_shell::ShellExt;
 use tokio::sync::Mutex;
 
 /// Глобальное состояние приложения (кэш конфига).
@@ -13,8 +18,17 @@ fn emit_log(app: &AppHandle, message: &str) {
     let _ = app.emit("log", message);
 }
 
-/// AppId игры в Steam.
-const STEAM_APP_ID_7DTD: &str = "251570";
+/// Ссылка автоподключения (официальный способ для Steam-версии 7DTD).
+/// @see https://community.thefunpimps.com/threads/command-line-interface-join-server.25272/
+fn build_steam_connect_url(ip: &str, port: u16, password: &str) -> String {
+    let endpoint = format!("{}:{}", ip.trim(), port);
+    let pw = password.trim();
+    if pw.is_empty() {
+        format!("steam://connect/{endpoint}")
+    } else {
+        format!("steam://connect/{endpoint}/{}", urlencoding::encode(pw))
+    }
+}
 
 /// Поиск steam.exe в стандартных местах Windows.
 fn find_steam_exe() -> Option<PathBuf> {
@@ -90,8 +104,21 @@ pub async fn set_game_folder(
 
 /// Загрузить текущий конфиг (без пароля в логах).
 #[tauri::command]
-pub async fn get_config(state: State<'_, AppState>) -> Result<LauncherConfig, String> {
-    let config = state.config.lock().await;
+pub async fn get_config(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<LauncherConfig, String> {
+    let mut config = state.config.lock().await;
+    if config.fix_legacy_local_server() {
+        config.save()?;
+        emit_log(
+            &app,
+            &format!(
+                "Адрес сервера обновлён на {}:{}",
+                config.server_ip, config.server_port
+            ),
+        );
+    }
     Ok(config.clone())
 }
 
@@ -104,8 +131,9 @@ pub async fn check_mods(
     let config = state.config.lock().await.clone();
     config.game_dir_path()?;
 
-    let manifest = load_manifest(&app)?;
-    let result = check_mods_internal(&config, &manifest);
+    let loaded = load_manifest(&app, &config).await?;
+    emit_log(&app, &format!("Манифест: {} ({} модов)", loaded.source, loaded.entries.len()));
+    let result = check_mods_internal(&config, &loaded.entries);
 
     if result.ok {
         emit_log(&app, "Проверка модов: всё в порядке.");
@@ -128,10 +156,17 @@ pub async fn download_and_install_mods(
     config.game_dir_path()?;
     config.validate_game_exe()?;
 
-    let manifest = load_manifest(&app)?;
-    emit_log(&app, "Начинаем загрузку и установку модов…");
+    let loaded = load_manifest(&app, &config).await?;
+    emit_log(
+        &app,
+        &format!(
+            "Манифест: {} — загрузка {} мод(ов)…",
+            loaded.source,
+            loaded.entries.len()
+        ),
+    );
 
-    let result = download_and_install_mods_internal(app.clone(), config, manifest).await;
+    let result = download_and_install_mods_internal(app.clone(), config, loaded.entries).await;
 
     if let Err(ref e) = result {
         emit_log(&app, &format!("Ошибка: {e}"));
@@ -143,66 +178,65 @@ pub async fn download_and_install_mods(
     result
 }
 
-/// Запустить игру с параметрами подключения к серверу.
+/// Запустить Steam и открыть `steam://connect/` (единственный поддерживаемый автовход).
 #[tauri::command]
 pub async fn launch_game(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let config = state.config.lock().await.clone();
-    let exe = config.validate_game_exe()?;
+    config.validate_game_exe()?;
 
-    let connect_arg = format!(
-        "-connect={}:{}",
-        config.server_ip, config.server_port
-    );
-    let password_arg = format!("-password={}", config.server_password);
+    let steam_exe = find_steam_exe().ok_or_else(|| {
+        "Steam не найден. Автоподключение работает только со Steam-версией 7 Days to Die.".to_string()
+    })?;
 
-    // Для Steam-версии надёжнее запуск через steam.exe -applaunch.
-    if let Some(steam_exe) = find_steam_exe() {
-        emit_log(
-            &app,
-            &format!(
-                "Запуск через Steam: {} -applaunch {} {}",
-                steam_exe.display(),
-                STEAM_APP_ID_7DTD,
-                connect_arg
-            ),
-        );
-
-        std::process::Command::new(&steam_exe)
-            .arg("-applaunch")
-            .arg(STEAM_APP_ID_7DTD)
-            .arg(&connect_arg)
-            .arg(&password_arg)
-            .spawn()
-            .map_err(|e| format!("Не удалось запустить Steam: {e}"))?;
-    } else {
-        emit_log(
-            &app,
-            &format!(
-                "Steam не найден, fallback на прямой запуск {} {} …",
-                exe.display(),
-                connect_arg
-            ),
-        );
-
-        std::process::Command::new(&exe)
-            .arg(&connect_arg)
-            .arg(&password_arg)
-            .current_dir(
-                exe.parent()
-                    .ok_or_else(|| "Не удалось определить папку игры".to_string())?,
-            )
-            .spawn()
-            .map_err(|e| {
-                format!(
-                    "Не удалось запустить игру (права доступа или антивирус?): {e}"
-                )
-            })?;
+    if config.server_password.trim().is_empty() {
+        emit_log(&app, "⚠ Пароль сервера пуст — задайте его в «Настройки»");
     }
 
-    Ok("Игра запущена".to_string())
+    emit_log(&app, "Запуск Steam…");
+    std::process::Command::new(&steam_exe)
+        .spawn()
+        .map_err(|e| format!("Не удалось запустить Steam: {e}"))?;
+
+    tokio::time::sleep(Duration::from_millis(2500)).await;
+
+    let url = build_steam_connect_url(&config.server_ip, config.server_port, &config.server_password);
+    emit_log(
+        &app,
+        &format!(
+            "Открываю steam://connect/{}:{} …",
+            config.server_ip, config.server_port
+        ),
+    );
+
+    if let Err(e) = app.shell().open(&url, None) {
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("cmd")
+                .args(["/C", "start", "", &url])
+                .spawn()
+                .map_err(|e2| format!("Steam-ссылка не открылась: {e}; fallback: {e2}"))?;
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            return Err(format!("Не удалось открыть Steam-ссылку: {e}"));
+        }
+    }
+
+    Ok("Запрос отправлен в Steam — дождитесь загрузки и входа на сервер".to_string())
+}
+
+/// Ссылка steam://connect для ярлыка / ручного копирования.
+#[tauri::command]
+pub async fn get_steam_connect_url(state: State<'_, AppState>) -> Result<String, String> {
+    let config = state.config.lock().await;
+    Ok(build_steam_connect_url(
+        &config.server_ip,
+        config.server_port,
+        &config.server_password,
+    ))
 }
 
 /// Путь к config.json для отображения в UI.
@@ -211,10 +245,34 @@ pub async fn get_config_path() -> Result<String, String> {
     LauncherConfig::config_path().map(|p| p.to_string_lossy().into_owned())
 }
 
-/// Список модов из manifest.json.
+/// Сохранить пароль сервера в config.json.
 #[tauri::command]
-pub async fn get_manifest(app: AppHandle) -> Result<Vec<crate::mods::ModManifestEntry>, String> {
-    load_manifest(&app)
+pub async fn save_server_password(
+    password: String,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<LauncherConfig, String> {
+    let mut config = state.config.lock().await;
+    config.server_password = password;
+    config.fix_legacy_local_server();
+    config.save()?;
+    emit_log(&app, "Пароль сервера сохранён в config.json");
+    Ok(config.clone())
+}
+
+/// Список модов (с сервера, кэша или локального файла).
+#[tauri::command]
+pub async fn get_manifest(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ManifestLoadResult, String> {
+    let config = state.config.lock().await.clone();
+    let loaded = load_manifest(&app, &config).await?;
+    emit_log(
+        &app,
+        &format!("Манифест: {} ({} модов)", loaded.source, loaded.entries.len()),
+    );
+    Ok(loaded)
 }
 
 /// Открыть папку или файл в проводнике Windows.

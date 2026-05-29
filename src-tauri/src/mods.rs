@@ -37,10 +37,134 @@ pub struct ModCheckResult {
 }
 
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
+const MANIFEST_FETCH_TIMEOUT_SECS: u64 = 20;
 
-/// Загрузить манифест из ресурса приложения или из public/manifest.json рядом с exe.
-pub fn load_manifest(app: &AppHandle) -> Result<Vec<ModManifestEntry>, String> {
-    // В dev — из public/, в release — из bundle resources
+/// Откуда взят манифест (для UI и логов).
+#[derive(Debug, Clone, Serialize)]
+pub struct ManifestLoadResult {
+    pub entries: Vec<ModManifestEntry>,
+    pub source: String,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ManifestJson {
+    List(Vec<ModManifestEntry>),
+    Wrapped { mods: Vec<ModManifestEntry> },
+}
+
+/// Загрузить манифест: сервер → кэш → встроенный/локальный файл.
+pub async fn load_manifest(
+    app: &AppHandle,
+    config: &LauncherConfig,
+) -> Result<ManifestLoadResult, String> {
+    let url = config.manifest_url.trim();
+    if !url.is_empty() {
+        match fetch_manifest_from_url(url).await {
+            Ok(entries) => {
+                let _ = save_manifest_cache(&entries);
+                return Ok(ManifestLoadResult {
+                    source: format!("сервер ({url})"),
+                    entries,
+                });
+            }
+            Err(net_err) => {
+                if let Ok(cached) = load_manifest_cache() {
+                    return Ok(ManifestLoadResult {
+                        source: format!("кэш (сервер недоступен: {net_err})"),
+                        entries: cached,
+                    });
+                }
+                let local = load_manifest_local(app)?;
+                return Ok(ManifestLoadResult {
+                    source: format!("локальный файл (сервер недоступен: {net_err})"),
+                    entries: local,
+                });
+            }
+        }
+    }
+
+    let entries = load_manifest_local(app)?;
+    Ok(ManifestLoadResult {
+        source: "локальный файл".to_string(),
+        entries,
+    })
+}
+
+async fn fetch_manifest_from_url(url: &str) -> Result<Vec<ModManifestEntry>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(MANIFEST_FETCH_TIMEOUT_SECS))
+        .user_agent("FansLauncher/1.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("сеть: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("чтение ответа: {e}"))?;
+
+    parse_manifest_json(&body)
+}
+
+fn parse_manifest_json(content: &str) -> Result<Vec<ModManifestEntry>, String> {
+    let parsed: ManifestJson =
+        serde_json::from_str(content).map_err(|e| format!("некорректный JSON: {e}"))?;
+
+    let entries = match parsed {
+        ManifestJson::List(list) => list,
+        ManifestJson::Wrapped { mods } => mods,
+    };
+
+    if entries.is_empty() {
+        return Err("манифест пуст".to_string());
+    }
+
+    for entry in &entries {
+        if entry.name.trim().is_empty() || entry.url.trim().is_empty() || entry.sha256.trim().is_empty()
+        {
+            return Err(format!("некорректная запись мода: {:?}", entry.name));
+        }
+    }
+
+    Ok(entries)
+}
+
+fn manifest_cache_path() -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "не удалось определить папку лаунчера".to_string())?;
+    Ok(dir.join(".launcher-cache").join("manifest.json"))
+}
+
+fn save_manifest_cache(entries: &[ModManifestEntry]) -> Result<(), String> {
+    let path = manifest_cache_path()?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(entries).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())
+}
+
+fn load_manifest_cache() -> Result<Vec<ModManifestEntry>, String> {
+    let path = manifest_cache_path()?;
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("кэш {}: {e}", path.display()))?;
+    parse_manifest_json(&content)
+}
+
+/// Встроенный manifest (release) или public/manifest.json (dev).
+fn load_manifest_local(app: &AppHandle) -> Result<Vec<ModManifestEntry>, String> {
     if let Ok(resource) = app.path().resource_dir() {
         let bundled = resource.join("manifest.json");
         if bundled.exists() {
@@ -63,13 +187,17 @@ pub fn load_manifest(app: &AppHandle) -> Result<Vec<ModManifestEntry>, String> {
         }
     }
 
-    Err("manifest.json не найден. Положите файл в public/ или рядом с лаунчером.".to_string())
+    Err(
+        "manifest.json не найден локально и сервер не отдал список модов. \
+         Проверьте manifest_url в config.json и файл на сервере."
+            .to_string(),
+    )
 }
 
 fn parse_manifest_file(path: &Path) -> Result<Vec<ModManifestEntry>, String> {
     let content =
-        fs::read_to_string(path).map_err(|e| format!("Не удалось прочитать {}: {e}", path.display()))?;
-    serde_json::from_str(&content).map_err(|e| format!("Некорректный manifest.json: {e}"))
+        fs::read_to_string(path).map_err(|e| format!("не удалось прочитать {}: {e}", path.display()))?;
+    parse_manifest_json(&content)
 }
 
 /// Проверить наличие модов и соответствие SHA256 маркерным файлам.

@@ -4,11 +4,49 @@
 
 @layer base {
   body {
-    @apply m-0 min-h-screen bg-surface text-gray-100 antialiased;
-    font-family: "Segoe UI", system-ui, sans-serif;
+    @apply m-0 h-screen overflow-hidden font-display antialiased text-gray-100;
+    background-color: #080a0d;
+    background-image: radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 107, 44, 0.12), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(56, 189, 248, 0.06), transparent 50%),
+      linear-gradient(180deg, #080a0d 0%, #0e1218 100%);
   }
 
   #root {
-    @apply min-h-screen;
+    @apply h-screen overflow-hidden;
+  }
+
+  .titlebar button {
+    -webkit-app-region: no-drag;
+  }
+
+  ::selection {
+    background: rgba(255, 107, 44, 0.35);
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-line bg-panel/90 shadow-panel backdrop-blur-md;
+  }
+
+  .panel-title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500;
+  }
+
+  .btn-soft {
+    @apply rounded-lg border border-line bg-panel-raised/80 px-3 py-2 text-xs font-medium text-gray-300 transition hover:border-line-strong hover:bg-panel-hover hover:text-white disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-play {
+    @apply relative overflow-hidden rounded-xl bg-gradient-to-b from-brand to-brand-dim py-3 text-center text-sm font-bold tracking-wide text-white shadow-play transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-800 disabled:shadow-none;
+  }
+
+  .btn-play::after {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent;
+  }
+
+  .input-field {
+    @apply rounded-lg border border-line bg-void/60 px-3 py-2 text-sm text-gray-200 ring-0 transition focus:border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand/20;
   }
 }

@@ -19,11 +19,13 @@ pub fn run() {
             commands::set_game_folder,
             commands::get_config,
             commands::get_config_path,
+            commands::save_server_password,
             commands::get_manifest,
             commands::reveal_path,
             commands::check_mods,
             commands::download_and_install_mods,
             commands::launch_game,
+            commands::get_steam_connect_url,
         ])
         .setup(|_| Ok(()))
         .run(tauri::generate_context!())

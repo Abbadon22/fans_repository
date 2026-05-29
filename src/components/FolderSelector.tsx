@@ -4,36 +4,22 @@ interface FolderSelectorProps {
   onSelect: () => void;
 }
 
-/** Выбор папки с установленной игрой. */
-export function FolderSelector({
-  gameDir,
-  disabled,
-  onSelect,
-}: FolderSelectorProps) {
+export function FolderSelector({ gameDir, disabled, onSelect }: FolderSelectorProps) {
   return (
-    <div className="space-y-2">
-      <label className="block text-xs font-medium uppercase tracking-wide text-gray-500">
-        Папка игры
-      </label>
-      <div className="flex gap-2">
-        <div
-          className="min-w-0 flex-1 truncate rounded-lg border border-surface-border bg-surface-elevated px-3 py-2 text-sm text-gray-300"
-          title={gameDir ?? undefined}
-        >
-          {gameDir ?? "Не выбрана"}
-        </div>
-        <button
-          type="button"
-          onClick={onSelect}
-          disabled={disabled}
-          className="shrink-0 rounded-lg border border-surface-border bg-surface-elevated px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-gray-500 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Обзор…
-        </button>
+    <section className="panel flex h-full flex-col p-4">
+      <p className="panel-title mb-3">Установка игры</p>
+      <div
+        className="input-field mb-3 min-h-[3rem] flex-1 truncate text-xs leading-relaxed"
+        title={gameDir ?? undefined}
+      >
+        {gameDir ?? "Укажите папку Steam с 7 Days to Die"}
       </div>
-      <p className="text-xs text-gray-500">
-        Должен содержать <code className="text-gray-400">7DaysToDie.exe</code>
+      <button type="button" className="btn-soft w-full" disabled={disabled} onClick={onSelect}>
+        Выбрать папку…
+      </button>
+      <p className="mt-2 text-[10px] text-gray-600">
+        Файл <span className="font-mono text-gray-500">7DaysToDie.exe</span>
       </p>
-    </div>
+    </section>
   );
 }

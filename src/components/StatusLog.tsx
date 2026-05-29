@@ -2,33 +2,50 @@ import { useEffect, useRef } from "react";
 
 interface StatusLogProps {
   logs: string[];
+  onClear?: () => void;
 }
 
-/** Консоль логов внизу окна. */
-export function StatusLog({ logs }: StatusLogProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+export function StatusLog({ logs, onClear }: StatusLogProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [logs]);
 
   return (
-    <div className="flex min-h-[140px] flex-1 flex-col rounded-lg border border-surface-border bg-black/40">
-      <div className="border-b border-surface-border px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-gray-500">
-        Лог
+    <section className="panel flex h-full min-h-0 flex-col overflow-hidden p-0">
+      <div className="flex items-center justify-between border-b border-line px-3 py-2">
+        <p className="panel-title">Журнал</p>
+        {onClear && logs.length > 0 && (
+          <button type="button" className="btn-soft px-2 py-1 text-[10px]" onClick={onClear}>
+            Очистить
+          </button>
+        )}
       </div>
-      <div className="flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed text-gray-300">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto bg-void/40 p-3 font-mono text-[11px] leading-relaxed"
+      >
         {logs.length === 0 ? (
-          <span className="text-gray-600">Ожидание событий…</span>
+          <span className="text-gray-600">// ожидание событий</span>
         ) : (
           logs.map((line, i) => (
-            <div key={`${i}-${line.slice(0, 24)}`} className="whitespace-pre-wrap break-all">
+            <div
+              key={`${i}-${line.slice(0, 24)}`}
+              className={`mb-1 whitespace-pre-wrap break-all border-l-2 pl-2 ${
+                line.includes("Ошибка") || line.includes("⚠")
+                  ? "border-brand text-amber-200/90"
+                  : line.includes("Готово") || line.includes("актуальны")
+                    ? "border-mint text-gray-300"
+                    : "border-transparent text-gray-500"
+              }`}
+            >
               {line}
             </div>
           ))
         )}
-        <div ref={bottomRef} />
       </div>
-    </div>
+    </section>
   );
 }

@@ -4,11 +4,12 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   DownloadProgress,
   LauncherConfig,
+  LauncherPhase,
   LauncherState,
   ModCheckResult,
+  ManifestLoadResult,
 } from "../types";
 
-/** Payload от Rust (snake_case). */
 interface DownloadProgressPayload {
   percent: number;
   downloaded_bytes: number;
@@ -33,7 +34,17 @@ function mapDownloadProgress(p: DownloadProgressPayload): DownloadProgress {
   };
 }
 
+function derivePhase(s: Pick<LauncherState, "isChecking" | "isDownloading" | "isReady" | "gameDir"> & { hadError?: boolean }): LauncherPhase {
+  if (!s.gameDir) return "no-folder";
+  if (s.isChecking) return "checking";
+  if (s.isDownloading) return "downloading";
+  if (s.isReady) return "ready";
+  if (s.hadError) return "error";
+  return s.gameDir ? "checking" : "no-folder";
+}
+
 const initialState: LauncherState = {
+  phase: "boot",
   isChecking: false,
   isDownloading: false,
   progress: 0,
@@ -43,11 +54,26 @@ const initialState: LauncherState = {
   logs: [],
   gameDir: null,
   configPath: null,
+  config: null,
+  manifest: [],
+  manifestSource: null,
+  modCheck: null,
 };
 
 export function useLauncher() {
   const [state, setState] = useState<LauncherState>(initialState);
   const bootstrapped = useRef(false);
+  const hadError = useRef(false);
+
+  const patch = useCallback((partial: Partial<LauncherState>) => {
+    setState((s) => {
+      const next = { ...s, ...partial };
+      return {
+        ...next,
+        phase: derivePhase({ ...next, hadError: hadError.current && !next.isReady }),
+      };
+    });
+  }, []);
 
   const appendLog = useCallback((line: string) => {
     const ts = new Date().toLocaleTimeString("ru-RU");
@@ -57,75 +83,92 @@ export function useLauncher() {
     }));
   }, []);
 
-  const setStatus = useCallback((status: string) => {
-    setState((s) => ({ ...s, status }));
-  }, []);
+  const setStatus = useCallback(
+    (status: string) => {
+      patch({ status });
+    },
+    [patch],
+  );
 
-  /** Полный цикл: проверка → при необходимости загрузка модов. */
+  const runCheckOnly = useCallback(async () => {
+    try {
+      const check = await invoke<ModCheckResult>("check_mods");
+      patch({ modCheck: check });
+      return check;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      appendLog(`Проверка: ${msg}`);
+      return null;
+    }
+  }, [appendLog, patch]);
+
   const runModPipeline = useCallback(async () => {
-    setState((s) => ({
-      ...s,
+    hadError.current = false;
+    patch({
       isChecking: true,
       isReady: false,
       progress: 0,
       downloadProgress: null,
       status: "Проверка модов…",
-    }));
+      modCheck: null,
+    });
 
     try {
       const check = await invoke<ModCheckResult>("check_mods");
+      patch({ modCheck: check });
 
       if (check.ok) {
         appendLog("Моды актуальны.");
-        setState((s) => ({
-          ...s,
+        patch({
           isChecking: false,
           isDownloading: false,
           isReady: true,
           progress: 100,
           downloadProgress: null,
           status: "Готово к запуску",
-        }));
+        });
         return;
       }
 
       appendLog(`Требуется обновление: ${check.missing.length} проблем(ы).`);
-      setState((s) => ({
-        ...s,
+      patch({
         isChecking: false,
         isDownloading: true,
         downloadProgress: null,
         status: "Загрузка и установка модов…",
-      }));
+      });
 
       await invoke<string>("download_and_install_mods");
 
-      setState((s) => ({
-        ...s,
+      const after = await invoke<ModCheckResult>("check_mods");
+      patch({
+        modCheck: after,
         isDownloading: false,
-        isReady: true,
+        isReady: after.ok,
         progress: 100,
         downloadProgress: null,
-        status: "Готово к запуску",
-      }));
+        status: after.ok ? "Готово к запуску" : "Ошибка после установки",
+      });
+      if (!after.ok) hadError.current = true;
     } catch (e) {
+      hadError.current = true;
       const msg = e instanceof Error ? e.message : String(e);
       appendLog(`Ошибка: ${msg}`);
-      setState((s) => ({
-        ...s,
+      patch({
         isChecking: false,
         isDownloading: false,
         isReady: false,
         downloadProgress: null,
-        status: "Ошибка — см. лог",
-      }));
+        status: "Ошибка — см. журнал",
+      });
     }
-  }, [appendLog]);
+  }, [appendLog, patch]);
 
   const selectFolder = useCallback(async () => {
     try {
       const path = await invoke<string>("select_game_folder");
-      setState((s) => ({ ...s, gameDir: path }));
+      hadError.current = false;
+      patch({ gameDir: path });
       appendLog(`Выбрана папка: ${path}`);
       await runModPipeline();
     } catch (e) {
@@ -133,7 +176,7 @@ export function useLauncher() {
       appendLog(msg);
       setStatus("Выбор папки отменён или ошибка");
     }
-  }, [appendLog, runModPipeline, setStatus]);
+  }, [appendLog, patch, runModPipeline, setStatus]);
 
   const launchGame = useCallback(async () => {
     try {
@@ -152,23 +195,85 @@ export function useLauncher() {
     void runModPipeline();
   }, [runModPipeline]);
 
-  // Подписка на события прогресса и логов от Rust
+  const refreshModsCheck = useCallback(() => {
+    if (!state.gameDir || state.isChecking || state.isDownloading) return;
+    patch({ isChecking: true, status: "Обновление манифеста и проверка…" });
+    void (async () => {
+      try {
+        const loaded = await invoke<ManifestLoadResult>("get_manifest");
+        patch({
+          manifest: loaded.entries,
+          manifestSource: loaded.source,
+        });
+        const check = await runCheckOnly();
+        patch({
+          isChecking: false,
+          isReady: check?.ok ?? false,
+          status: check?.ok ? "Готово к запуску" : "Нужно обновить моды",
+        });
+        if (check && !check.ok) hadError.current = true;
+      } catch (e) {
+        hadError.current = true;
+        appendLog(e instanceof Error ? e.message : String(e));
+        patch({ isChecking: false, status: "Ошибка проверки" });
+      }
+    })();
+  }, [
+    appendLog,
+    patch,
+    runCheckOnly,
+    state.gameDir,
+    state.isChecking,
+    state.isDownloading,
+  ]);
+
+  const openGameFolder = useCallback(async () => {
+    if (!state.gameDir) return;
+    try {
+      await invoke("reveal_path", { path: state.gameDir });
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog, state.gameDir]);
+
+  const openConfigFolder = useCallback(async () => {
+    if (!state.configPath) return;
+    try {
+      const dir = state.configPath.replace(/[/\\][^/\\]+$/, "");
+      await invoke("reveal_path", { path: dir || state.configPath });
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog, state.configPath]);
+
+  const clearLogs = useCallback(() => {
+    patch({ logs: [] });
+  }, [patch]);
+
+  const savePassword = useCallback(
+    async (password: string) => {
+      const config = await invoke<LauncherConfig>("save_server_password", { password });
+      patch({ config });
+      appendLog("Пароль обновлён");
+    },
+    [appendLog, patch],
+  );
+
   useEffect(() => {
     const unsubs: Array<() => void> = [];
 
     void (async () => {
       unsubs.push(
         await listen<number>("progress", (event) => {
-          setState((s) => ({ ...s, progress: event.payload }));
+          patch({ progress: event.payload });
         }),
       );
       unsubs.push(
         await listen<DownloadProgressPayload>("download-progress", (event) => {
-          setState((s) => ({
-            ...s,
+          patch({
             progress: event.payload.percent,
             downloadProgress: mapDownloadProgress(event.payload),
-          }));
+          });
         }),
       );
       unsubs.push(
@@ -181,46 +286,58 @@ export function useLauncher() {
     return () => {
       unsubs.forEach((u) => u());
     };
-  }, [appendLog]);
+  }, [appendLog, patch]);
 
-  // Первый запуск: загрузка конфига и автопроверка модов
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
 
     void (async () => {
       try {
-        const configPath = await invoke<string>("get_config_path");
-        const config = await invoke<LauncherConfig>("get_config");
+        const [configPath, config, manifestLoaded] = await Promise.all([
+          invoke<string>("get_config_path"),
+          invoke<LauncherConfig>("get_config"),
+          invoke<ManifestLoadResult>("get_manifest"),
+        ]);
 
-        setState((s) => ({
-          ...s,
+        patch({
           gameDir: config.game_dir,
           configPath,
-        }));
+          config,
+          manifest: manifestLoaded.entries,
+          manifestSource: manifestLoaded.source,
+          phase: config.game_dir ? "checking" : "no-folder",
+        });
 
         appendLog(`Конфиг: ${configPath}`);
+        appendLog(`Манифест: ${manifestLoaded.source} (${manifestLoaded.entries.length} модов)`);
 
         if (!config.game_dir) {
           setStatus("Выберите папку с игрой");
-          appendLog("Папка игры не задана — укажите каталог с 7DaysToDie.exe");
+          appendLog("Папка игры не задана — укажите её во вкладке «Настройки»");
           return;
         }
 
         appendLog(`Папка игры: ${config.game_dir}`);
         await runModPipeline();
       } catch (e) {
+        hadError.current = true;
         const msg = e instanceof Error ? e.message : String(e);
         appendLog(`Ошибка инициализации: ${msg}`);
-        setStatus("Ошибка инициализации");
+        patch({ status: "Ошибка инициализации", phase: "error" });
       }
     })();
-  }, [appendLog, runModPipeline, setStatus]);
+  }, [appendLog, patch, runModPipeline, setStatus]);
 
   return {
     state,
     selectFolder,
     launchGame,
     retryMods,
+    refreshModsCheck,
+    openGameFolder,
+    openConfigFolder,
+    savePassword,
+    clearLogs,
   };
 }

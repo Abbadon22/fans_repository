@@ -1,6 +1,6 @@
 # Fans Launcher — 7 Days to Die
 
-Лаунчер для закрытой группы (Steam-версия): выбор папки игры, проверка/установка модов по манифесту, запуск с `-connect` и `-password`.
+Лаунчер для закрытой группы (Steam-версия): выбор папки игры, проверка/установка модов по манифесту, подключение через `steam://connect/IP:PORT/пароль` (официальный способ; параметры `-connect` у клиента 7DTD не работают).
 
 ## Требования
 
@@ -16,16 +16,24 @@ npm install
 
 ## Настройка перед сборкой
 
-1. **`public/manifest.json`** — укажите прямые URL (или публичные ключи Яндекс.Диска) и реальные SHA256 ZIP-архивов модов.
+1. **Манифест модов на сервере** — положите `public/launcher/manifest.json` на HTTP (см. `docs/MANIFEST_SERVER.ru.md`). По умолчанию лаунчер запрашивает `http://epyc2.worldhosts.fun:22499/launcher/manifest.json`. Локальный `public/manifest.json` — только запасной вариант.
 2. **`config.json`** — создаётся автоматически при первом запуске рядом с `.exe` лаунчера. Скопируйте `config.example.json` и задайте:
    - `server_ip`, `server_port`, `server_password`
    - `game_dir` — заполнится после выбора папки в UI
 
 ### SHA256 архива
 
+После сборки zip (тот же файл, что заливаете на GitHub / Яндекс):
+
 ```powershell
-Get-FileHash -Path mod.zip -Algorithm SHA256
+Get-FileHash -Path ".\MyMod.zip" -Algorithm SHA256
 ```
+
+Скопируйте `Hash` в `manifest.json` (64 символа, hex). Подробнее: `docs/MANIFEST_SERVER.ru.md` (GitHub, Releases, raw).
+
+### GitHub
+
+В поле `url` мода — прямая ссылка на zip (**Releases** или **raw.githubusercontent.com**), не страница `github.com/.../blob/...`.
 
 ### Яндекс.Диск
 

@@ -1,36 +1,32 @@
 interface PlayButtonProps {
   disabled: boolean;
   loading: boolean;
+  loadingLabel?: string;
   onPlay: () => void;
   onRetry?: () => void;
   showRetry: boolean;
 }
 
-/** Кнопка запуска игры. */
 export function PlayButton({
   disabled,
   loading,
+  loadingLabel = "Подождите…",
   onPlay,
   onRetry,
   showRetry,
 }: PlayButtonProps) {
   return (
-    <div className="flex gap-2">
+    <div className="flex min-w-0 flex-1 gap-2">
       <button
         type="button"
         onClick={onPlay}
         disabled={disabled || loading}
-        className="flex-1 rounded-lg bg-accent py-3 text-center text-sm font-semibold text-white shadow-lg shadow-accent-muted/30 transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-700 disabled:shadow-none"
+        className="btn-play flex-1"
       >
-        {loading ? "Подождите…" : "Играть"}
+        {loading ? loadingLabel : "▶  Подключиться (Steam)"}
       </button>
       {showRetry && onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          disabled={loading}
-          className="rounded-lg border border-surface-border px-4 py-3 text-sm text-gray-300 transition hover:bg-surface-elevated disabled:opacity-50"
-        >
+        <button type="button" onClick={onRetry} disabled={loading} className="btn-soft px-5 py-3">
           Повторить
         </button>
       )}

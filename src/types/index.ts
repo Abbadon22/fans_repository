@@ -3,7 +3,15 @@ export interface LauncherConfig {
   server_ip: string;
   server_port: number;
   server_password: string;
+  /** URL JSON-манифеста модов на сервере. */
+  manifest_url: string;
   game_dir: string | null;
+}
+
+/** Ответ загрузки манифеста с бэкенда. */
+export interface ManifestLoadResult {
+  entries: ModManifestEntry[];
+  source: string;
 }
 
 /** Запись манифеста мода. */
@@ -54,5 +62,6 @@ export interface LauncherState {
   configPath: string | null;
   config: LauncherConfig | null;
   manifest: ModManifestEntry[];
+  manifestSource: string | null;
   modCheck: ModCheckResult | null;
 }

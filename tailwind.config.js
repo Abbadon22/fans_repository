@@ -4,19 +4,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        surface: {
-          DEFAULT: "#1a1d24",
-          elevated: "#23272f",
-          border: "#2e3440",
+        void: "#080a0d",
+        panel: {
+          DEFAULT: "#12161c",
+          raised: "#1a2029",
+          hover: "#222a35",
         },
-        accent: {
-          DEFAULT: "#e85d04",
-          hover: "#f48c06",
-          muted: "#9a3412",
+        line: {
+          DEFAULT: "rgba(255,255,255,0.06)",
+          strong: "rgba(255,255,255,0.12)",
         },
+        brand: {
+          DEFAULT: "#ff6b2c",
+          dim: "#c44e1a",
+          glow: "rgba(255, 107, 44, 0.35)",
+        },
+        mint: "#34d399",
+        sky: "#38bdf8",
       },
       fontFamily: {
-        mono: ["JetBrains Mono", "Consolas", "monospace"],
+        display: ['"Segoe UI"', "system-ui", "sans-serif"],
+        mono: ['"Cascadia Mono"', "Consolas", "monospace"],
+      },
+      boxShadow: {
+        panel: "0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)",
+        play: "0 8px 32px rgba(255, 107, 44, 0.35), 0 2px 0 rgba(255,255,255,0.1) inset",
+      },
+      backgroundImage: {
+        "grid-fade":
+          "linear-gradient(rgba(255,107,44,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,107,44,0.03) 1px, transparent 1px)",
+      },
+      backgroundSize: {
+        grid: "24px 24px",
       },
     },
   },
