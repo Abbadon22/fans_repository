@@ -210,3 +210,33 @@ pub async fn launch_game(
 pub async fn get_config_path() -> Result<String, String> {
     LauncherConfig::config_path().map(|p| p.to_string_lossy().into_owned())
 }
+
+/// Список модов из manifest.json.
+#[tauri::command]
+pub async fn get_manifest(app: AppHandle) -> Result<Vec<crate::mods::ModManifestEntry>, String> {
+    load_manifest(&app)
+}
+
+/// Открыть папку или файл в проводнике Windows.
+#[tauri::command]
+pub async fn reveal_path(path: String) -> Result<(), String> {
+    let path_buf = PathBuf::from(&path);
+    if !path_buf.exists() {
+        return Err(format!("Путь не существует: {path}"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(path_buf.as_os_str())
+            .spawn()
+            .map_err(|e| format!("Не удалось открыть проводник: {e}"))?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = path_buf;
+        Err("Открытие папки поддерживается только в Windows".to_string())
+    }
+}

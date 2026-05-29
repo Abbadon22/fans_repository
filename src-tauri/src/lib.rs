@@ -19,6 +19,8 @@ pub fn run() {
             commands::set_game_folder,
             commands::get_config,
             commands::get_config_path,
+            commands::get_manifest,
+            commands::reveal_path,
             commands::check_mods,
             commands::download_and_install_mods,
             commands::launch_game,

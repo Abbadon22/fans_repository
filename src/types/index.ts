@@ -31,8 +31,18 @@ export interface DownloadProgress {
   modTotal: number;
 }
 
+/** Фаза работы лаунчера для UI. */
+export type LauncherPhase =
+  | "boot"
+  | "no-folder"
+  | "checking"
+  | "downloading"
+  | "ready"
+  | "error";
+
 /** Состояние UI лаунчера. */
 export interface LauncherState {
+  phase: LauncherPhase;
   isChecking: boolean;
   isDownloading: boolean;
   progress: number;
@@ -42,4 +52,7 @@ export interface LauncherState {
   logs: string[];
   gameDir: string | null;
   configPath: string | null;
+  config: LauncherConfig | null;
+  manifest: ModManifestEntry[];
+  modCheck: ModCheckResult | null;
 }

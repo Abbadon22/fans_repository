@@ -14,9 +14,11 @@
       {
         "label": "main",
         "title": "Fans Launcher — 7 Days to Die",
-        "width": 520,
-        "height": 640,
-        "resizable": false,
+        "width": 480,
+        "height": 720,
+        "minWidth": 420,
+        "minHeight": 600,
+        "resizable": true,
         "center": true,
         "decorations": true
       }
