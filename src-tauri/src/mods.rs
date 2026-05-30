@@ -21,12 +21,25 @@ pub struct DownloadProgressPayload {
     pub mod_total: usize,
 }
 
-/// Запись манифеста мода (встроенный manifest.json).
+/// Запись манифеста мода.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModManifestEntry {
     pub name: String,
+    #[serde(default)]
+    pub names: Vec<String>,
+    #[serde(default)]
+    pub archive: Option<String>,
     pub url: String,
     pub sha256: String,
+}
+
+impl ModManifestEntry {
+    pub fn folder_names(&self) -> Vec<String> {
+        if !self.names.is_empty() {
+            return self.names.clone();
+        }
+        vec![self.name.clone()]
+    }
 }
 
 /// Результат проверки модов.
@@ -227,26 +240,29 @@ pub fn check_mods_internal(
     }
 
     for entry in manifest {
-        let marker = marker_path(&mods_dir, &entry.name);
+        let folder_names = entry.folder_names();
+        for folder in &folder_names {
+            let marker = marker_path(&mods_dir, folder);
 
-        if !marker.is_file() {
-            missing.push(format!(
-                "Мод «{}» не установлен лаунчером (нет маркера хеша)",
-                entry.name
-            ));
-            continue;
-        }
+            if !marker.is_file() {
+                missing.push(format!(
+                    "Мод «{}» не установлен лаунчером (нет маркера хеша)",
+                    folder
+                ));
+                continue;
+            }
 
-        let stored = fs::read_to_string(&marker)
-            .unwrap_or_default()
-            .trim()
-            .to_lowercase();
-        let expected = entry.sha256.trim().to_lowercase();
-        if stored != expected {
-            missing.push(format!(
-                "Мод «{}»: хеш не совпадает (ожидается {}, в маркере {})",
-                entry.name, expected, stored
-            ));
+            let stored = fs::read_to_string(&marker)
+                .unwrap_or_default()
+                .trim()
+                .to_lowercase();
+            let expected = entry.sha256.trim().to_lowercase();
+            if stored != expected {
+                missing.push(format!(
+                    "Мод «{}»: хеш не совпадает (ожидается {}, в маркере {})",
+                    folder, expected, stored
+                ));
+            }
         }
     }
 
@@ -293,10 +309,11 @@ pub async fn download_and_install_mods_internal(
         emit_log(&app, &format!("Распаковка «{}» в Mods/…", entry.name));
         extract_zip_safe(&zip_bytes, &mods_dir)?;
 
-        // Маркер успешной установки в служебной папке (без вмешательства в структуру мода).
         ensure_marker_dir(&mods_dir)?;
-        fs::write(marker_path(&mods_dir, &entry.name), &expected)
-            .map_err(|e| format!("Не удалось записать маркер хеша: {e}"))?;
+        for folder in entry.folder_names() {
+            fs::write(marker_path(&mods_dir, &folder), &expected)
+                .map_err(|e| format!("Не удалось записать маркер хеша для «{folder}»: {e}"))?;
+        }
 
         emit_download_progress(
             &app,

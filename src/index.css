@@ -5,10 +5,12 @@
 @layer base {
   body {
     @apply m-0 h-screen overflow-hidden font-display antialiased text-gray-100;
-    background-color: #080a0d;
-    background-image: radial-gradient(ellipse 80% 50% at 20% -10%, rgba(255, 107, 44, 0.12), transparent 55%),
-      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(56, 189, 248, 0.06), transparent 50%),
-      linear-gradient(180deg, #080a0d 0%, #0e1218 100%);
+    background-color: #06080b;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 15% -15%, rgba(255, 107, 44, 0.14), transparent 58%),
+      radial-gradient(ellipse 50% 45% at 100% 5%, rgba(56, 189, 248, 0.07), transparent 52%),
+      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(255, 107, 44, 0.04), transparent 50%),
+      linear-gradient(180deg, #06080b 0%, #0c1016 45%, #0a0e14 100%);
   }
 
   #root {
@@ -26,27 +28,37 @@
 
 @layer components {
   .panel {
-    @apply rounded-2xl border border-line bg-panel/90 shadow-panel backdrop-blur-md;
+    @apply rounded-2xl border border-line bg-panel/85 shadow-panel backdrop-blur-xl;
   }
 
   .panel-title {
-    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500;
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-gray-500;
   }
 
   .btn-soft {
-    @apply rounded-lg border border-line bg-panel-raised/80 px-3 py-2 text-xs font-medium text-gray-300 transition hover:border-line-strong hover:bg-panel-hover hover:text-white disabled:cursor-not-allowed disabled:opacity-40;
+    @apply rounded-lg border border-line bg-panel-raised/70 px-3 py-2 text-xs font-medium text-gray-300 transition duration-150 hover:border-line-strong hover:bg-panel-hover hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .btn-play {
-    @apply relative overflow-hidden rounded-xl bg-gradient-to-b from-brand to-brand-dim py-3 text-center text-sm font-bold tracking-wide text-white shadow-play transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-800 disabled:shadow-none;
+    @apply relative overflow-hidden rounded-xl bg-gradient-to-b from-brand to-brand-dim py-3.5 text-center text-sm font-bold tracking-wide text-white shadow-play transition duration-150 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-800 disabled:shadow-none;
   }
 
   .btn-play::after {
     content: "";
-    @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent;
+    @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent;
   }
 
   .input-field {
-    @apply rounded-lg border border-line bg-void/60 px-3 py-2 text-sm text-gray-200 ring-0 transition focus:border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand/20;
+    @apply rounded-lg border border-line bg-void/70 px-3 py-2.5 text-sm text-gray-200 transition focus:border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand/20;
+  }
+
+  .glass-line {
+    @apply h-px bg-gradient-to-r from-transparent via-line-strong to-transparent;
+  }
+}
+
+@layer utilities {
+  .text-glow-brand {
+    text-shadow: 0 0 24px rgba(255, 107, 44, 0.35);
   }
 }

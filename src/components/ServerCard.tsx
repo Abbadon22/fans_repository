@@ -37,20 +37,23 @@ export function ServerCard({ config }: ServerCardProps) {
   return (
     <section className="panel relative overflow-hidden p-0">
       <div
-        className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-sky/5"
+        className="absolute inset-0 bg-gradient-to-br from-brand/12 via-transparent to-sky/5"
         aria-hidden
       />
       <div className="relative p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-3 flex items-start justify-between gap-2">
           <div>
             <p className="panel-title">Сервер группы</p>
             {isOfficial && (
-              <p className="mt-0.5 text-[10px] text-mint">Официальный хост Fans</p>
+              <p className="mt-1 flex items-center gap-1 text-[10px] text-mint">
+                <span className="h-1.5 w-1.5 rounded-full bg-mint" />
+                Официальный хост Fans
+              </p>
             )}
           </div>
           <div className="flex gap-1">
             <button type="button" className="btn-soft text-[10px]" onClick={() => void copyAddress()}>
-              {copied === "ip" ? "✓ IP" : "IP"}
+              {copied === "ip" ? "✓ IP" : "Копировать IP"}
             </button>
             <button type="button" className="btn-soft text-[10px]" onClick={() => void copySteamLink()}>
               {copied === "steam" ? "✓ Steam" : "Steam-ссылка"}
@@ -58,13 +61,13 @@ export function ServerCard({ config }: ServerCardProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-line-strong bg-void/50 px-4 py-3">
-          <p className="font-mono text-lg font-semibold tracking-tight text-white">
+        <div className="rounded-xl border border-line-strong bg-void/60 px-4 py-3.5 backdrop-blur-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Connect</p>
+          <p className="mt-1 font-mono text-lg font-semibold tracking-tight text-white">
             {config.server_ip}
+            <span className="text-brand">:{config.server_port}</span>
           </p>
-          <p className="mt-1 font-mono text-2xl font-bold text-brand">:{config.server_port}</p>
         </div>
-
       </div>
     </section>
   );

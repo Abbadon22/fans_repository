@@ -35,3 +35,8 @@ webmap/public/config.json
 webmap/.env
 webmap/node_modules
 webmap/dist
+
+# Mods — только zip, не распакованные папки
+Mods/**/*
+!Mods/*.zip
+!Mods/.gitkeep

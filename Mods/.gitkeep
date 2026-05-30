@@ -1,0 +1,4 @@
+# Распакованные моды — в git только zip-архивы
+Mods/**/*
+!Mods/*.zip
+!Mods/.gitkeep

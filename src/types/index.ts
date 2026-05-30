@@ -17,6 +17,10 @@ export interface ManifestLoadResult {
 /** Запись манифеста мода. */
 export interface ModManifestEntry {
   name: string;
+  /** Папки модов внутри одного zip. */
+  names?: string[];
+  /** Имя zip в репозитории Mods/. */
+  archive?: string;
   url: string;
   sha256: string;
 }

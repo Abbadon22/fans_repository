@@ -1,9 +1,9 @@
 import type { LauncherPhase } from "../types";
 
 const STEPS = [
-  { id: "folder", label: "Папка" },
-  { id: "mods", label: "Моды" },
-  { id: "play", label: "Старт" },
+  { id: "folder", label: "Папка", icon: "📁" },
+  { id: "mods", label: "Моды", icon: "◫" },
+  { id: "play", label: "Старт", icon: "▶" },
 ] as const;
 
 function stepIndex(phase: LauncherPhase, hasFolder: boolean, isReady: boolean): number {
@@ -24,23 +24,28 @@ export function StepIndicator({ phase, hasFolder, isReady }: StepIndicatorProps)
   const active = stepIndex(phase, hasFolder, isReady);
 
   return (
-    <ol className="flex items-center gap-1.5">
+    <ol className="flex items-center gap-0">
       {STEPS.map((step, i) => {
         const done = i < active;
         const current = i === active;
         return (
-          <li key={step.id} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-gray-700">·</span>}
+          <li key={step.id} className="flex items-center">
+            {i > 0 && (
+              <span
+                className={`mx-1 h-px w-4 ${done ? "bg-mint/40" : "bg-line"}`}
+                aria-hidden
+              />
+            )}
             <span
-              className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+              className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition ${
                 done
                   ? "bg-mint/10 text-mint"
                   : current
-                    ? "bg-brand/15 text-brand"
+                    ? "bg-brand/15 text-brand ring-1 ring-brand/25"
                     : "text-gray-600"
               }`}
             >
-              {done ? "✓ " : ""}
+              <span className="opacity-80">{done ? "✓" : step.icon}</span>
               {step.label}
             </span>
           </li>
