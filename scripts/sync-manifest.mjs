@@ -1,29 +1,25 @@
 /**
- * Сканирует Mods/*.zip → SHA256 + папки модов → manifest.json
- * URL модов и манифеста — на игровом сервере (по умолчанию).
+ * Mods/*.zip + scripts/mod-urls.json → manifest.json (zip + Яндекс.Диск)
  *
  * Usage: npm run manifest:sync
- *        npm run manifest:sync -- --server epyc2.worldhosts.fun --web-port 22499
+ *        npm run manifest:sync -- --hash-from-yandex   # SHA256 с Яндекса (если нет zip локально)
  */
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, readdirSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
 
 const root = join(fileURLToPath(import.meta.url), "..", "..");
 const modsDir = join(root, "Mods");
+const urlsPath = join(root, "scripts", "mod-urls.json");
 
 const args = process.argv.slice(2);
-function arg(name, fallback) {
-  const i = args.indexOf(name);
-  return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
-}
+const hashFromYandex = args.includes("--hash-from-yandex");
 
-const serverHost = arg("--server", "epyc2.worldhosts.fun");
-const webPort = arg("--web-port", "22499");
-const urlBase = `http://${serverHost}:${webPort}/Mods`;
-const manifestServerUrl = `http://${serverHost}:${webPort}/manifest.json`;
+const GITHUB_MANIFEST =
+  "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";
 
 const SKIP_ROOTS = new Set(["__MACOSX", ".DS_Store", "Thumbs.db"]);
 
@@ -37,10 +33,33 @@ function sha256File(path) {
   });
 }
 
+async function sha256Stream(readable) {
+  const hash = createHash("sha256");
+  for await (const chunk of readable) hash.update(chunk);
+  return hash.digest("hex");
+}
+
+async function resolveYandex(publicUrl) {
+  const api = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(publicUrl)}`;
+  const res = await fetch(api);
+  if (!res.ok) {
+    throw new Error(`Yandex API ${res.status} для ${publicUrl}: ${await res.text()}`);
+  }
+  const { href } = await res.json();
+  if (!href) throw new Error(`Yandex API: нет href для ${publicUrl}`);
+  return href;
+}
+
+async function sha256FromYandex(publicUrl) {
+  const href = await resolveYandex(publicUrl);
+  const res = await fetch(href);
+  if (!res.ok) throw new Error(`Скачивание ${res.status} для ${publicUrl}`);
+  return sha256Stream(Readable.fromWeb(res.body));
+}
+
 function detectModFolders(zip) {
   const entries = zip.getEntries();
   const roots = new Set();
-
   for (const entry of entries) {
     const normalized = entry.entryName.replace(/\\/g, "/");
     const parts = normalized.split("/").filter(Boolean);
@@ -49,14 +68,12 @@ function detectModFolders(zip) {
     if (SKIP_ROOTS.has(rootName) || rootName.startsWith(".")) continue;
     roots.add(rootName);
   }
-
   const withModInfo = [...roots].filter((rootName) =>
     entries.some((e) => {
       const p = e.entryName.replace(/\\/g, "/");
       return p.startsWith(`${rootName}/`) && p.endsWith("ModInfo.xml");
     }),
   );
-
   return (withModInfo.length > 0 ? withModInfo : [...roots]).sort();
 }
 
@@ -67,43 +84,63 @@ function displayName(archive, names) {
 }
 
 async function main() {
+  if (!existsSync(urlsPath)) {
+    console.error(`Не найден ${urlsPath} — укажите URL модов (Яндекс.Диск).`);
+    process.exit(1);
+  }
   if (!existsSync(modsDir)) {
     console.error(`Папка не найдена: ${modsDir}`);
     process.exit(1);
   }
 
-  const zips = readdirSync(modsDir)
-    .filter((f) => f.toLowerCase().endsWith(".zip"))
-    .sort((a, b) => a.localeCompare(b, "ru"));
-
+  const modUrls = JSON.parse(readFileSync(urlsPath, "utf8"));
+  const zips = Object.keys(modUrls).sort((a, b) => a.localeCompare(b, "ru"));
   const manifest = [];
 
   for (const archive of zips) {
-    const zipPath = join(modsDir, archive);
-    const sha256 = await sha256File(zipPath);
-    const zip = new AdmZip(zipPath);
-    const names = detectModFolders(zip);
-
-    if (names.length === 0) {
-      console.warn(`⚠ ${archive}: не найдены папки модов, пропуск`);
+    const yandexUrl = modUrls[archive];
+    if (!yandexUrl?.trim()) {
+      console.warn(`⚠ ${archive}: нет URL в mod-urls.json, пропуск`);
       continue;
     }
 
-    const url = `${urlBase}/${encodeURIComponent(archive)}`;
+    const zipPath = join(modsDir, archive);
+    let sha256;
+    let names;
+
+    if (existsSync(zipPath)) {
+      sha256 = await sha256File(zipPath);
+      names = detectModFolders(new AdmZip(zipPath));
+      console.log(`✓ ${archive} [локальный zip]`);
+    } else if (hashFromYandex) {
+      console.log(`… ${archive} [SHA256 с Яндекс.Диска]`);
+      sha256 = await sha256FromYandex(yandexUrl);
+      names = [archive.replace(/\.zip$/i, "")];
+      console.log(`✓ ${archive} [яндекс]`);
+    } else {
+      console.warn(`⚠ ${archive}: нет локального zip — запустите с --hash-from-yandex`);
+      continue;
+    }
+
+    if (names.length === 0) {
+      console.warn(`⚠ ${archive}: не найдены папки модов`);
+      continue;
+    }
 
     manifest.push({
       archive,
       name: displayName(archive, names),
       names,
-      url,
+      url: yandexUrl.trim(),
       sha256,
     });
 
-    console.log(`✓ ${archive}`);
-    console.log(`  url:    ${url}`);
+    console.log(`  url:    ${yandexUrl}`);
     console.log(`  sha256: ${sha256}`);
     console.log(`  mods:   ${names.join(", ")}`);
   }
+
+  manifest.sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
   const json = `${JSON.stringify(manifest, null, 2)}\n`;
   for (const path of [join(root, "manifest.json"), join(root, "public", "manifest.json")]) {
@@ -111,8 +148,8 @@ async function main() {
     console.log(`→ ${path}`);
   }
 
-  console.log(`\nМанифест на сервере: ${manifestServerUrl}`);
-  console.log(`Загрузите manifest.json и zip в Mods/ на сервере (${urlBase}/).`);
+  console.log(`\nМанифест на GitHub: ${GITHUB_MANIFEST}`);
+  console.log(`Закоммитьте manifest.json в репозиторий — игроки подтянут список оттуда.`);
   console.log(`Готово: ${manifest.length} записей.`);
 }
 

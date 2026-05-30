@@ -2,123 +2,67 @@
 
 Лаунчер при каждой проверке запрашивает JSON по URL из `config.json`.
 
-**Сервер Fans:** `epyc2.worldhosts.fun` — игровой порт **27681**, веб/файлы **22499**.
+**Репозиторий:** [github.com/Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository)
 
 По умолчанию:
 
 ```json
-"manifest_url": "http://epyc2.worldhosts.fun:22499/manifest.json"
+"manifest_url": "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json"
 ```
 
-Файлы модов лежат на том же сервере:
-
-```text
-http://epyc2.worldhosts.fun:22499/Mods/<имя-архива>.zip
-```
+Zip-архивы модов лежат на **Яндекс.Диске** — ссылки в поле `url` каждой записи манифеста.
 
 ## Формат файла
-
-Массив объектов (или обёртка `{ "mods": [ ... ] }`):
 
 ```json
 [
   {
-    "archive": "MyModPack.zip",
-    "name": "MyModPack (2 mods)",
-    "names": ["ModFolderA", "ModFolderB"],
-    "url": "http://epyc2.worldhosts.fun:22499/Mods/MyModPack.zip",
+    "archive": "MyMod.zip",
+    "name": "MyMod",
+    "names": ["MyModFolder"],
+    "url": "https://disk.yandex.ru/d/XXXXXXXX",
     "sha256": "hex-хеш архива"
   }
 ]
 ```
 
-- `archive` — имя zip в `Mods/` на сервере
-- `names` — все папки модов внутри архива (лаунчер проверяет каждую)
-- `name` — подпись в UI (генерируется скриптом)
-- `url` — прямая ссылка на zip на сервере (порт 22499)
+- `url` — публичная ссылка Яндекс.Диск (`disk.yandex.ru/d/...`)
+- `sha256` — хеш **скачанного zip** (лаунчер проверяет после загрузки)
+- `names` — папки модов внутри архива
 
-Шаблон для локальной сборки: `public/manifest.json` в проекте лаунчера.
+Лаунчер сам обращается к API Яндекс.Диска и скачивает файл по прямой ссылке.
 
-## Как раздать файлы на сервере
+## Обновить манифест
 
-1. Загрузите **`manifest.json`** в корень веб-раздачи (порт 22499).
-2. Загрузите все **`.zip`** в папку **`Mods/`** на том же сервере.
-3. Убедитесь, что ссылки открываются в браузере и сразу отдают файл (не 404).
+1. Положите zip в `Mods/` (локально, для SHA256).
+2. Укажите ссылки в `scripts/mod-urls.json`.
+3. `npm run manifest:sync`
+4. Закоммитьте `manifest.json` в GitHub.
 
-Проверка:
-
-```text
-curl -I http://epyc2.worldhosts.fun:22499/manifest.json
-curl -I http://epyc2.worldhosts.fun:22499/Mods/zSMXhud.zip
-```
-
-Ответ **200**, тело манифеста — JSON-массив модов.
+Пересборка лаунчера **не нужна** — достаточно push манифеста.
 
 ## Поведение лаунчера
 
-1. Скачать `manifest_url` с сервера
-2. При ошибке сети — взять **кэш** (`.launcher-cache/manifest.json` рядом с exe)
-3. Если кэша нет — **локальный** `manifest.json` из сборки (запасной)
+1. Скачать `manifest_url` с GitHub
+2. При ошибке — кэш (`.launcher-cache/manifest.json`)
+3. Если кэша нет — встроенный `manifest.json` из сборки
 
-При первом запуске после обновления лаунчер автоматически переключит старые URL (GitHub, localhost) на сервер Fans.
+При первом запуске v1.0.7+ старые URL (сервер `:22499`) мигрируют на GitHub.
 
-## Манифест модов (локальная разработка)
-
-1. Положите `.zip` архивы в папку **`Mods/`** в корне проекта.
-2. Синхронизируйте manifest (SHA256 + список папок внутри каждого zip):
+## SHA256
 
 ```powershell
-npm run manifest:sync
+Get-FileHash -Path ".\MyMod.zip" -Algorithm SHA256
 ```
 
-Скрипт обновит `manifest.json` и `public/manifest.json` с URL вида `http://epyc2.worldhosts.fun:22499/Mods/...`.
+Или без локального zip:
 
-Если в одном архиве **несколько модов** — все верхнеуровневые папки с `ModInfo.xml` попадут в поле `names`.
-
-## Добавить новый мод
-
-1. Добавьте `.zip` в локальную папку `Mods/` и выполните `npm run manifest:sync`
-2. Загрузите обновлённый **`manifest.json`** и новый **zip** на сервер (`Mods/`)
-3. Игроки нажимают **«Обновить»** в блоке «Модпack» или перезапускают проверку
-
-Пересборка лаунчера **не нужна** — достаточно обновить файлы на сервере.
+```powershell
+npm run manifest:sync -- --hash-from-yandex
+```
 
 ---
 
-## Как получить SHA256 архива
+## GitHub Releases (лаунчер)
 
-Лаунчер сравнивает хеш **скачанного zip** с полем `sha256` в манифесте. Считайте хеш **после упаковки** того же файла, который заливаете на сервер.
-
-### Windows (PowerShell)
-
-```powershell
-Get-FileHash -Path "C:\path\to\MyMod.zip" -Algorithm SHA256
-```
-
-В манифест копируйте значение **Hash** целиком, **строчными** буквами (как выдаёт команда):
-
-```text
-071a49b75c64dc88912223035b1a3d1a3c2aee271b4587ebb6e695e757de2530
-```
-
-### Windows (cmd, без PowerShell)
-
-```cmd
-certutil -hashfile "C:\path\to\MyMod.zip" SHA256
-```
-
-### Если меняете zip
-
-Любое изменение архива → **новый SHA256** → обновите `manifest.json` на сервере, иначе лаунчер решит, что мод «битый», и переустановит.
-
-### Быстрая проверка
-
-1. Скачайте zip по той же ссылке, что в манифесте.
-2. Посчитайте хеш локально.
-3. Сравните с `sha256` в JSON — должны совпасть.
-
----
-
-## GitHub (только лаунчер)
-
-Обновления **самого лаунчера** по-прежнему идут через GitHub Releases (`tauri-plugin-updater`). Моды с GitHub больше не используются — только сервер на порту 22499.
+Обновления **самого лаунчера** — через GitHub Releases (`tauri-plugin-updater`).

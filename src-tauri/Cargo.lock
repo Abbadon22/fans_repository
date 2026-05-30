@@ -1106,7 +1106,7 @@ dependencies = [
 
 [[package]]
 name = "fans-launcher"
-version = "1.0.5"
+version = "1.0.7"
 dependencies = [
  "dirs 5.0.1",
  "futures-util",

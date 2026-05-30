@@ -21,6 +21,13 @@ pub struct DownloadProgressPayload {
     pub mod_total: usize,
 }
 
+/// Файл внутри папки мода (kind: folder).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModFileEntry {
+    pub path: String,
+    pub sha256: String,
+}
+
 /// Запись манифеста мода.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModManifestEntry {
@@ -28,9 +35,17 @@ pub struct ModManifestEntry {
     #[serde(default)]
     pub names: Vec<String>,
     #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
     pub archive: Option<String>,
-    pub url: String,
-    pub sha256: String,
+    #[serde(default)]
+    pub url: Option<String>,
+    #[serde(default)]
+    pub sha256: Option<String>,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub files: Vec<ModFileEntry>,
 }
 
 impl ModManifestEntry {
@@ -39,6 +54,22 @@ impl ModManifestEntry {
             return self.names.clone();
         }
         vec![self.name.clone()]
+    }
+
+    pub fn is_folder(&self) -> bool {
+        self.kind.as_deref() == Some("folder") || !self.files.is_empty()
+    }
+
+    pub fn fingerprint(&self) -> String {
+        if self.is_folder() {
+            folder_fingerprint(&self.files)
+        } else {
+            self.sha256
+                .as_deref()
+                .unwrap_or("")
+                .trim()
+                .to_lowercase()
+        }
     }
 }
 
@@ -143,11 +174,30 @@ fn parse_manifest_json(content: &str) -> Result<Vec<ModManifestEntry>, String> {
     }
 
     for entry in &entries {
-        if entry.name.trim().is_empty()
-            || entry.url.trim().is_empty()
-            || entry.sha256.trim().is_empty()
-        {
+        if entry.name.trim().is_empty() {
             return Err(format!("некорректная запись мода: {:?}", entry.name));
+        }
+        if entry.is_folder() {
+            if entry
+                .base_url
+                .as_ref()
+                .map(|u| u.trim().is_empty())
+                .unwrap_or(true)
+            {
+                return Err(format!("мод «{}»: не задан base_url", entry.name));
+            }
+            if entry.files.is_empty() {
+                return Err(format!("мод «{}»: пустой список files", entry.name));
+            }
+            for file in &entry.files {
+                if file.path.trim().is_empty() || file.sha256.trim().is_empty() {
+                    return Err(format!("мод «{}»: некорректный файл в files", entry.name));
+                }
+            }
+        } else if entry.url.as_ref().map(|u| u.trim().is_empty()).unwrap_or(true)
+            || entry.sha256.as_ref().map(|h| h.trim().is_empty()).unwrap_or(true)
+        {
+            return Err(format!("мод «{}»: нужны url и sha256 (или kind: folder)", entry.name));
         }
     }
 
@@ -240,6 +290,7 @@ pub fn check_mods_internal(
     }
 
     for entry in manifest {
+        let expected = entry.fingerprint();
         let folder_names = entry.folder_names();
         for folder in &folder_names {
             let marker = marker_path(&mods_dir, folder);
@@ -256,7 +307,6 @@ pub fn check_mods_internal(
                 .unwrap_or_default()
                 .trim()
                 .to_lowercase();
-            let expected = entry.sha256.trim().to_lowercase();
             if stored != expected {
                 missing.push(format!(
                     "Мод «{}»: хеш не совпадает (ожидается {}, в маркере {})",
@@ -284,6 +334,8 @@ pub async fn download_and_install_mods_internal(
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(10))
         .timeout(std::time::Duration::from_secs(DOWNLOAD_TIMEOUT_SECS))
+        .connect_timeout(Duration::from_secs(30))
+        .user_agent("FansLauncher/1.0")
         .build()
         .map_err(|e| format!("Ошибка HTTP-клиента: {e}"))?;
 
@@ -294,25 +346,34 @@ pub async fn download_and_install_mods_internal(
             &format!("[{}/{}] Загрузка мода «{}»…", index + 1, total, entry.name),
         );
 
-        let zip_bytes =
-            download_with_progress(&app, &client, &entry.url, &entry.name, index, total).await?;
+        if entry.is_folder() {
+            install_folder_mod(&app, &client, entry, &mods_dir, index, total).await?;
+        } else {
+            let url = entry
+                .url
+                .as_deref()
+                .ok_or_else(|| format!("мод «{}»: нет url", entry.name))?;
+            let zip_bytes =
+                download_with_progress(&app, &client, url, &entry.name, index, total, false).await?;
 
-        let actual_hash = sha256_hex(&zip_bytes);
-        let expected = entry.sha256.trim().to_lowercase();
-        if actual_hash != expected {
-            return Err(format!(
-                "Неверный SHA256 для «{}»: ожидалось {}, получено {}",
-                entry.name, expected, actual_hash
-            ));
-        }
+            let actual_hash = sha256_hex(&zip_bytes);
+            let expected = entry.fingerprint();
+            if actual_hash != expected {
+                return Err(format!(
+                    "Неверный SHA256 для «{}»: ожидалось {}, получено {}",
+                    entry.name, expected, actual_hash
+                ));
+            }
 
-        emit_log(&app, &format!("Распаковка «{}» в Mods/…", entry.name));
-        extract_zip_safe(&zip_bytes, &mods_dir)?;
+            emit_log(&app, &format!("Распаковка «{}» в Mods/…", entry.name));
+            extract_zip_safe(&zip_bytes, &mods_dir)?;
 
-        ensure_marker_dir(&mods_dir)?;
-        for folder in entry.folder_names() {
-            fs::write(marker_path(&mods_dir, &folder), &expected)
-                .map_err(|e| format!("Не удалось записать маркер хеша для «{folder}»: {e}"))?;
+            ensure_marker_dir(&mods_dir)?;
+            for folder in entry.folder_names() {
+                fs::write(marker_path(&mods_dir, &folder), &expected).map_err(|e| {
+                    format!("Не удалось записать маркер хеша для «{folder}»: {e}")
+                })?;
+            }
         }
 
         emit_download_progress(
@@ -402,9 +463,12 @@ async fn download_with_progress(
     mod_name: &str,
     mod_index: usize,
     mod_total: usize,
+    is_file: bool,
 ) -> Result<Vec<u8>, String> {
     let resolved = resolve_download_url(client, url).await?;
-    emit_log(app, "Получена прямая ссылка на архив, загрузка…");
+    if !is_file {
+        emit_log(app, "Получена прямая ссылка на архив, загрузка…");
+    }
 
     let response = client
         .get(&resolved)
@@ -482,6 +546,103 @@ fn sha256_hex(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hex::encode(hasher.finalize())
+}
+
+fn folder_fingerprint(files: &[ModFileEntry]) -> String {
+    let mut lines: Vec<String> = files
+        .iter()
+        .map(|f| format!("{}:{}", f.path.trim(), f.sha256.trim().to_lowercase()))
+        .collect();
+    lines.sort();
+    sha256_hex(lines.join("\n").as_bytes())
+}
+
+fn join_download_url(base: &str, relative: &str) -> String {
+    let mut url = base.trim_end_matches('/').to_string();
+    for segment in relative.split('/') {
+        if segment.is_empty() {
+            continue;
+        }
+        url.push('/');
+        url.push_str(&urlencoding::encode(segment));
+    }
+    url
+}
+
+async fn install_folder_mod(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    entry: &ModManifestEntry,
+    mods_dir: &Path,
+    mod_index: usize,
+    mod_total: usize,
+) -> Result<(), String> {
+    let base_url = entry
+        .base_url
+        .as_deref()
+        .ok_or_else(|| format!("мод «{}»: нет base_url", entry.name))?;
+    let fingerprint = entry.fingerprint();
+    let file_total = entry.files.len();
+    let folder = entry
+        .folder_names()
+        .into_iter()
+        .next()
+        .ok_or_else(|| format!("мод «{}»: нет имени папки", entry.name))?;
+
+    emit_log(
+        app,
+        &format!(
+            "Синхронизация «{}» — {} файлов с сервера…",
+            entry.name, file_total
+        ),
+    );
+
+    let mod_root = mods_dir.join(&folder);
+    fs::create_dir_all(&mod_root)
+        .map_err(|e| format!("Не удалось создать {}: {e}", mod_root.display()))?;
+
+    let canonical_root = mod_root
+        .canonicalize()
+        .map_err(|e| format!("Некорректная папка мода {}: {e}", mod_root.display()))?;
+
+    for (file_idx, file) in entry.files.iter().enumerate() {
+        let url = join_download_url(base_url, &file.path);
+        let label = format!("{} ({}/{})", entry.name, file_idx + 1, file_total);
+        let bytes = download_with_progress(
+            app,
+            client,
+            &url,
+            &label,
+            mod_index,
+            mod_total,
+            true,
+        )
+        .await?;
+
+        let actual = sha256_hex(&bytes);
+        let expected = file.sha256.trim().to_lowercase();
+        if actual != expected {
+            return Err(format!(
+                "Неверный SHA256 для «{}/{}»: ожидалось {}, получено {}",
+                folder, file.path, expected, actual
+            ));
+        }
+
+        let rel_str = file.path.replace('\\', "/");
+        let rel = Path::new(&rel_str);
+        let out_path = join_safe(&canonical_root, rel)?;
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(&out_path, &bytes)
+            .map_err(|e| format!("Не удалось записать {}: {e}", out_path.display()))?;
+    }
+
+    ensure_marker_dir(mods_dir)?;
+    fs::write(marker_path(mods_dir, &folder), &fingerprint)
+        .map_err(|e| format!("Не удалось записать маркер хеша для «{folder}»: {e}"))?;
+
+    Ok(())
 }
 
 /// Безопасная распаковка ZIP в Mods/ с защитой от Zip Slip.

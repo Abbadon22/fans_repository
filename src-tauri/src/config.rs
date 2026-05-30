@@ -9,23 +9,12 @@ pub const FAN_SERVER_PORT: u16 = 27681;
 pub const FAN_WEB_PORT: u16 = 22499;
 pub const FAN_DEFAULT_PASSWORD: &str = "2281337";
 
-/// Манифест и моды на игровом сервере.
+/// Манифест модов на GitHub (raw). Zip-архивы — по URL из manifest (Яндекс.Диск и др.).
 pub const FAN_MANIFEST_URL: &str =
-    "http://epyc2.worldhosts.fun:22499/manifest.json";
-
-pub const FAN_MODS_BASE_URL: &str = "http://epyc2.worldhosts.fun:22499/Mods";
+    "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";
 
 fn default_manifest_url() -> String {
     FAN_MANIFEST_URL.to_string()
-}
-
-/// Прямая ссылка на zip мода на сервере.
-pub fn fan_mod_zip_url(archive: &str) -> String {
-    format!(
-        "{}/{}",
-        FAN_MODS_BASE_URL.trim_end_matches('/'),
-        urlencoding::encode(archive)
-    )
 }
 
 /// Конфигурация лаунчера, хранится в config.json рядом с исполняемым файлом.
@@ -76,24 +65,20 @@ impl LauncherConfig {
         Ok(config)
     }
 
-    /// Переключить GitHub / localhost / старые пути на сервер Fans.
+    /// Переключить старые URL (сервер, localhost, launcher/) на GitHub raw manifest.
     pub fn fix_legacy_manifest_url(&mut self) -> bool {
-        let url = self.manifest_url.trim();
-        let lower = url.to_ascii_lowercase();
+        let lower = self.manifest_url.trim().to_ascii_lowercase();
         let target = FAN_MANIFEST_URL.to_ascii_lowercase();
 
         if lower == target {
             return false;
         }
-        if lower.contains(&format!(":{FAN_WEB_PORT}/")) && lower.ends_with("manifest.json") {
-            return false;
-        }
 
-        let legacy = url.is_empty()
-            || lower.contains("github.com")
+        let legacy = lower.is_empty()
             || lower.contains("127.0.0.1")
             || lower.contains("localhost")
-            || lower.contains("/launcher/");
+            || lower.contains("/launcher/")
+            || lower.contains(&format!(":{FAN_WEB_PORT}/"));
 
         if !legacy {
             return false;

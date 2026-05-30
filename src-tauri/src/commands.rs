@@ -98,7 +98,7 @@ pub async fn get_config(
     }
     if config.fix_legacy_manifest_url() {
         config.save()?;
-        emit_log(&app, "URL манифеста обновлён на сервер Fans");
+        emit_log(&app, "URL манифеста обновлён на GitHub");
     }
     Ok(config.clone())
 }

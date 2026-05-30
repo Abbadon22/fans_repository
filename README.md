@@ -16,9 +16,9 @@ npm install
 
 ## Настройка перед сборкой
 
-1. **Манифест модов** — на игровом сервере `epyc2.worldhosts.fun:22499`. Лаунчер по умолчанию запрашивает:
-   `http://epyc2.worldhosts.fun:22499/manifest.json`
-   Zip-архивы — в `http://epyc2.worldhosts.fun:22499/Mods/`
+1. **Манифест модов** — на GitHub: [manifest.json](https://github.com/Abbadon22/fans_repository/blob/main/manifest.json). Лаунчер по умолчанию запрашивает:
+   `https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json`
+2. **Zip-моды** — ссылки Яндекс.Диск в поле `url` манифеста (см. `scripts/mod-urls.json`).
 2. **`config.json`** — создаётся автоматически при первом запуске рядом с `.exe` лаунчера. Скопируйте `config.example.json` и задайте:
    - `server_ip`, `server_port`, `server_password`
    - `game_dir` — заполнится после выбора папки в UI
@@ -33,22 +33,9 @@ Get-FileHash -Path ".\MyMod.zip" -Algorithm SHA256
 
 Скопируйте `Hash` в `manifest.json` (64 символа, hex). Подробнее: `docs/MANIFEST_SERVER.ru.md`.
 
-### Сервер модов
+### Яндекс.Диск (моды)
 
-В поле `url` мода — прямая ссылка на zip на сервере, например:
-`http://epyc2.worldhosts.fun:22499/Mods/MyMod.zip`
-
-После `npm run manifest:sync` загрузите `manifest.json` и zip в `Mods/` на сервере.
-
-### Яндекс.Диск
-
-В `manifest.json` можно использовать:
-
-```text
-https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=<URL-encoded public link>
-```
-
-Лаунчер получит JSON с полем `href` и скачает файл по прямой ссылке (с поддержкой HTTP-редиректов).
+Ссылки в `scripts/mod-urls.json`, затем `npm run manifest:sync`. В `manifest.json` поле `url` — публичная ссылка `disk.yandex.ru/d/...`. Подробнее: `docs/MANIFEST_SERVER.ru.md`.
 
 ## Интерактивная карта сервера (`webmap/`)
 
