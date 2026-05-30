@@ -5,6 +5,7 @@ export type FooterMode = "main" | "mods";
 interface AppFooterProps {
   mode: FooterMode;
   disabled: boolean;
+  playBlockHint?: string;
   loading: boolean;
   gameRunning: boolean;
   loadingLabel: string;
@@ -19,6 +20,7 @@ interface AppFooterProps {
 export function AppFooter({
   mode,
   disabled,
+  playBlockHint,
   loading,
   gameRunning,
   loadingLabel,
@@ -47,6 +49,7 @@ export function AppFooter({
         <div className="order-1 min-w-0 flex-1 sm:order-2">
           <PlayButton
             disabled={disabled}
+            disabledHint={playBlockHint}
             loading={loading}
             gameRunning={gameRunning}
             loadingLabel={loadingLabel}
@@ -56,7 +59,10 @@ export function AppFooter({
           />
         </div>
       </div>
-      {mode === "main" && !disabled && !loading && !gameRunning && (
+      {mode === "main" && playBlockHint && !loading && (
+        <p className="mt-2 text-center text-xs text-brand/80">{playBlockHint}</p>
+      )}
+      {mode === "main" && !disabled && !loading && !gameRunning && !playBlockHint && (
         <p className="mt-2 text-center text-xs text-gray-600">
           После запуска Steam подключит к серверу (можно отключить в настройках)
         </p>

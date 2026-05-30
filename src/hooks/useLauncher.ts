@@ -10,6 +10,7 @@ import type {
   ModCheckResult,
 } from "../types";
 import { checkAppUpdate } from "./useAppUpdater";
+import { normalizeModCheck } from "../utils/modCheck";
 
 interface DownloadProgressPayload {
   percent: number;
@@ -94,7 +95,7 @@ export function useLauncher() {
 
   const runCheckOnly = useCallback(async () => {
     try {
-      const check = await invoke<ModCheckResult>("check_mods");
+      const check = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
       patch({ modCheck: check });
       return check;
     } catch (e) {
@@ -115,7 +116,7 @@ export function useLauncher() {
     });
 
     try {
-      const check = await invoke<ModCheckResult>("check_mods");
+      const check = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
       patch({ modCheck: check });
 
       if (check.ok) {
@@ -174,6 +175,14 @@ export function useLauncher() {
       appendLog("Сначала выберите папку с игрой");
       return;
     }
+
+    const pending = state.modCheck?.pending_install ?? 0;
+    if (pending === 0) {
+      appendLog("Все моды актуальны — загрузка не требуется");
+      const check = await runModCheckOnly();
+      if (check?.ok) return;
+    }
+
     hadError.current = false;
     patch({
       isChecking: false,
@@ -193,7 +202,7 @@ export function useLauncher() {
 
       await invoke<string>("download_and_install_mods");
 
-      const after = await invoke<ModCheckResult>("check_mods");
+      const after = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
       patch({
         modCheck: after,
         isDownloading: false,
@@ -219,7 +228,7 @@ export function useLauncher() {
         status: "Ошибка загрузки модов",
       });
     }
-  }, [appendLog, patch, state.gameDir, state.modCheck?.pending_install]);
+  }, [appendLog, patch, runModCheckOnly, state.gameDir, state.modCheck?.pending_install]);
 
   const runModPipeline = runModCheckOnly;
 
@@ -259,9 +268,22 @@ export function useLauncher() {
     await runInstallPipeline();
   }, [runInstallPipeline]);
 
-  const retryMods = useCallback(() => {
-    void runInstallPipeline();
-  }, [runInstallPipeline]);
+  const retryMods = useCallback(async () => {
+    const check = await runModCheckOnly();
+    if (check?.pending_install && check.pending_install > 0) {
+      await runInstallPipeline();
+    } else if (check && !check.ok) {
+      appendLog("Проверьте список проблем на вкладке «Моды»");
+    }
+  }, [appendLog, runInstallPipeline, runModCheckOnly]);
+
+  const openModsFolder = useCallback(async () => {
+    try {
+      await invoke("open_mods_folder");
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog]);
 
   const refreshModsCheck = useCallback(() => {
     if (!state.gameDir || state.isChecking || state.isDownloading) return;
@@ -463,6 +485,7 @@ export function useLauncher() {
     installMissingMods,
     refreshModsCheck,
     openGameFolder,
+    openModsFolder,
     openConfigFolder,
     savePassword,
     saveAutoSteamConnect,

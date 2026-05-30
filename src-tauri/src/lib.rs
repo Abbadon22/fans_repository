@@ -32,6 +32,8 @@ pub fn run() {
             commands::launch_game,
             commands::is_game_running,
             commands::get_steam_connect_url,
+            commands::open_steam_connect,
+            commands::open_mods_folder,
         ])
         .setup(|_| Ok(()))
         .run(tauri::generate_context!())

@@ -1,12 +1,13 @@
-import { ContentHeader } from "./ContentHeader";
 import { ModsPanel } from "./ModsPanel";
 import { ProgressBar } from "./ProgressBar";
+import { ViewHeader } from "./ViewHeader";
 import type { ModCheckResult, ModManifestEntry } from "../types";
 import type { DownloadProgress } from "../types";
 import { modStatuses } from "../utils/mods";
 
 interface ModsViewProps {
   manifest: ModManifestEntry[];
+  manifestSource: string | null;
   modCheck: ModCheckResult | null;
   busy: boolean;
   showProgress: boolean;
@@ -14,11 +15,12 @@ interface ModsViewProps {
   downloadProgress: DownloadProgress | null;
   pendingInstall: number;
   onRefresh: () => void;
-  onInstall: () => void;
+  onOpenModsFolder: () => void;
 }
 
 export function ModsView({
   manifest,
+  manifestSource,
   modCheck,
   busy,
   showProgress,
@@ -26,46 +28,51 @@ export function ModsView({
   downloadProgress,
   pendingInstall,
   onRefresh,
-  onInstall,
+  onOpenModsFolder,
 }: ModsViewProps) {
   const items = modStatuses(manifest, modCheck);
   const okCount = items.filter((i) => i.status === "ok").length;
+  const missingCount = items.filter((i) => i.status === "missing").length;
 
   const subtitle =
-    manifest.length > 0
-      ? `${okCount} из ${manifest.length} установлено`
-      : "Список загружается…";
+    manifestSource != null
+      ? `${okCount}/${manifest.length} готово${missingCount > 0 ? ` · ${missingCount} нужно обновить` : ""}`
+      : `${manifest.length} модов в манифесте`;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <ContentHeader
-        title="Моды"
+    <>
+      <ViewHeader
+        title="Модпак сервера"
         subtitle={subtitle}
-        actions={
-          <>
-            <button type="button" className="btn-soft" disabled={busy} onClick={onRefresh}>
-              {busy ? "…" : "Проверить"}
-            </button>
-            {pendingInstall > 0 && (
-              <button
-                type="button"
-                className="btn-accent"
-                disabled={busy}
-                onClick={onInstall}
-              >
-                Установить {pendingInstall}
-              </button>
-            )}
-          </>
+        action={
+          <button type="button" className="btn-soft" disabled={busy} onClick={onRefresh}>
+            {busy ? "Проверка…" : "Обновить список"}
+          </button>
         }
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 px-8 py-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 py-4">
+        {manifestSource && (
+          <p className="shrink-0 truncate text-xs text-gray-500" title={manifestSource}>
+            Источник: {manifestSource}
+          </p>
+        )}
+
         {(showProgress || showCheckingBar) && (
           <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
         )}
-        <ModsPanel manifest={manifest} modCheck={modCheck} busy={busy} />
+
+        <ModsPanel
+          manifest={manifest}
+          manifestSource={null}
+          modCheck={modCheck}
+          pendingInstall={pendingInstall}
+          busy={busy}
+          onRefresh={onRefresh}
+          onOpenModsFolder={onOpenModsFolder}
+          hideHeader
+        />
       </div>
-    </div>
+    </>
   );
 }

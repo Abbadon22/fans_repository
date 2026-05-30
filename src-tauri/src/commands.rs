@@ -6,7 +6,7 @@ use crate::mods::{
     check_mods_internal, download_and_install_mods_internal, entries_needing_install,
     load_manifest, remove_mods_not_in_manifest, ManifestLoadResult, ModCheckResult,
 };
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_opener::OpenerExt;
 use tokio::sync::Mutex;
@@ -265,6 +265,57 @@ pub async fn get_steam_connect_url(state: State<'_, AppState>) -> Result<String,
     ))
 }
 
+/// Открыть steam://connect в Steam (без запуска игры).
+#[tauri::command]
+pub async fn open_steam_connect(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let config = state.config.lock().await;
+    let url = build_steam_connect_url(
+        &config.server_ip,
+        config.server_port,
+        &config.server_password,
+    );
+    app.opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| format!("Не удалось открыть Steam: {e}"))?;
+    emit_log(&app, "Открыто подключение Steam к серверу");
+    Ok(())
+}
+
+/// Открыть папку Mods игры в проводнике.
+#[tauri::command]
+pub async fn open_mods_folder(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let config = state.config.lock().await;
+    let mods_dir = config.mods_dir()?;
+    std::fs::create_dir_all(&mods_dir)
+        .map_err(|e| format!("Не удалось создать Mods: {e}"))?;
+    reveal_path_impl(&mods_dir)?;
+    emit_log(&app, &format!("Открыта папка: {}", mods_dir.display()));
+    Ok(())
+}
+
+fn reveal_path_impl(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Err(format!("Путь не существует: {}", path.display()));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        platform::command_no_window("explorer")
+            .arg(path.as_os_str())
+            .spawn()
+            .map_err(|e| format!("Не удалось открыть проводник: {e}"))?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Открытие папки поддерживается только на Windows".to_string())
+    }
+}
+
 /// Включить/выключить автоподключение Steam после запуска игры.
 #[tauri::command]
 pub async fn save_auto_steam_connect(
@@ -349,23 +400,5 @@ pub async fn get_manifest(
 /// Открыть папку или файл в проводнике Windows.
 #[tauri::command]
 pub async fn reveal_path(path: String) -> Result<(), String> {
-    let path_buf = PathBuf::from(&path);
-    if !path_buf.exists() {
-        return Err(format!("Путь не существует: {path}"));
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        platform::command_no_window("explorer")
-            .arg(path_buf.as_os_str())
-            .spawn()
-            .map_err(|e| format!("Не удалось открыть проводник: {e}"))?;
-        return Ok(());
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = path_buf;
-        Err("Открытие папки поддерживается только в Windows".to_string())
-    }
+    reveal_path_impl(Path::new(&path))
 }

@@ -1,5 +1,6 @@
 interface PlayButtonProps {
   disabled: boolean;
+  disabledHint?: string;
   loading: boolean;
   gameRunning: boolean;
   loadingLabel?: string;
@@ -10,6 +11,7 @@ interface PlayButtonProps {
 
 export function PlayButton({
   disabled,
+  disabledHint,
   loading,
   gameRunning,
   loadingLabel = "Подождите…",
@@ -25,6 +27,7 @@ export function PlayButton({
         type="button"
         onClick={onPlay}
         disabled={playDisabled}
+        title={playDisabled && disabledHint ? disabledHint : undefined}
         className={gameRunning ? "btn-play-running flex-1" : "btn-play flex-1"}
       >
         {gameRunning ? "●  Игра запущена" : loading ? loadingLabel : "▶  Играть"}

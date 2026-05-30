@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AppFooter } from "./components/AppFooter";
 import { AppSidebar } from "./components/AppSidebar";
 import { CustomTitlebar, type AppView } from "./components/CustomTitlebar";
 import { MainView } from "./components/MainView";
@@ -14,9 +15,12 @@ export default function App() {
     state,
     selectFolder,
     launchGame,
+    retryMods,
     installMissingMods,
     refreshModsCheck,
     openGameFolder,
+    openModsFolder,
+    openConfigFolder,
     savePassword,
     saveAutoSteamConnect,
     exportLogs,
@@ -29,9 +33,13 @@ export default function App() {
     state.isDownloading || (busy && (state.progress > 0 || state.downloadProgress != null));
   const showCheckingBar = state.isChecking && !state.downloadProgress;
 
-  const modItems = modStatuses(state.manifest, state.modCheck);
-  const missingModsCount = modItems.filter((i) => i.status === "missing").length;
-  const okModsCount = modItems.filter((i) => i.status === "ok").length;
+  const missingModsCount = modStatuses(state.manifest, state.modCheck).filter(
+    (i) => i.status === "missing",
+  ).length;
+  const okModsCount = modStatuses(state.manifest, state.modCheck).filter(
+    (i) => i.status === "ok",
+  ).length;
+
   const pendingInstall = state.modCheck?.pending_install ?? 0;
 
   const needsModsInstall =
@@ -39,82 +47,119 @@ export default function App() {
 
   useEffect(() => {
     if (autoModsNavDone.current || busy || !needsModsInstall) return;
-    autoModsNavDone.current = true;
-    setView("mods");
-  }, [busy, needsModsInstall]);
+    if (state.phase === "error" || (state.modCheck && !state.modCheck.ok)) {
+      autoModsNavDone.current = true;
+      setView("mods");
+    }
+  }, [busy, needsModsInstall, state.modCheck, state.phase]);
 
-  const playDisabled =
-    !state.isReady || busy || state.gameRunning;
+  const showFooter = view === "main" || view === "mods";
+  const footerMode = view === "mods" ? "mods" : "main";
+
+  const playBlocked = !state.isReady || pendingInstall > 0;
+  const playBlockHint =
+    pendingInstall > 0
+      ? `Сначала установите ${pendingInstall} мод(ов) на вкладке «Моды»`
+      : !state.gameDir
+        ? "Выберите папку с игрой"
+        : !state.isReady
+          ? "Дождитесь проверки модов или исправьте ошибки"
+          : undefined;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <CustomTitlebar />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <AppSidebar
           view={view}
           onViewChange={setView}
           modsBadge={missingModsCount > 0 ? missingModsCount : undefined}
-          status={state.status}
           isReady={state.isReady}
-          gameRunning={state.gameRunning}
-          busy={busy}
-          modsOk={okModsCount}
-          modsTotal={state.manifest.length}
-          onPlay={() => void launchGame()}
-          playDisabled={playDisabled}
+          pendingInstall={pendingInstall}
         />
 
-        <main className="content-shell flex min-h-0 min-w-0 flex-1 flex-col bg-void/30">
-          {view === "main" && (
-            <MainView
-              status={state.status}
-              hasFolder={state.gameDir !== null}
-              isReady={state.isReady}
-              gameRunning={state.gameRunning}
-              config={state.config}
-              pendingInstall={pendingInstall}
-              busy={busy}
-              showProgress={showProgress || showCheckingBar}
-              showCheckingBar={showCheckingBar}
-              downloadProgress={state.downloadProgress}
-              logs={state.logs}
-              onClearLogs={clearLogs}
-              onExportLogs={() => void exportLogs()}
-              onGoToMods={() => setView("mods")}
-              onSelectFolder={() => void selectFolder()}
-              onRecheckMods={refreshModsCheck}
-            />
-          )}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {view === "main" && (
+          <MainView
+            phase={state.phase}
+            status={state.status}
+            hasFolder={state.gameDir !== null}
+            isReady={state.isReady}
+            gameRunning={state.gameRunning}
+            manifestCount={state.manifest.length}
+            manifestOkCount={okModsCount}
+            config={state.config}
+            modCheck={state.modCheck}
+            removedMods={state.modCheck?.removed ?? []}
+            pendingInstall={pendingInstall}
+            busy={busy}
+            showProgress={showProgress || showCheckingBar}
+            showCheckingBar={showCheckingBar}
+            downloadProgress={state.downloadProgress}
+            logs={state.logs}
+            onClearLogs={clearLogs}
+            onExportLogs={() => void exportLogs()}
+            onGoToMods={() => setView("mods")}
+            onSelectFolder={() => void selectFolder()}
+          />
+        )}
 
-          {view === "mods" && (
-            <ModsView
-              manifest={state.manifest}
-              modCheck={state.modCheck}
-              busy={busy}
-              showProgress={showProgress || showCheckingBar}
-              showCheckingBar={showCheckingBar}
-              downloadProgress={state.downloadProgress}
-              pendingInstall={pendingInstall}
-              onRefresh={refreshModsCheck}
-              onInstall={() => void installMissingMods()}
-            />
-          )}
+        {view === "mods" && (
+          <ModsView
+            manifest={state.manifest}
+            manifestSource={state.manifestSource}
+            modCheck={state.modCheck}
+            busy={busy}
+            showProgress={showProgress || showCheckingBar}
+            showCheckingBar={showCheckingBar}
+            downloadProgress={state.downloadProgress}
+            pendingInstall={pendingInstall}
+            onRefresh={refreshModsCheck}
+            onOpenModsFolder={() => void openModsFolder()}
+          />
+        )}
 
-          {view === "settings" && (
-            <SettingsView
-              config={state.config}
-              gameDir={state.gameDir}
-              busy={busy}
-              onSelectFolder={() => void selectFolder()}
-              onOpenGameFolder={() => void openGameFolder()}
-              onSavePassword={savePassword}
-              onSaveAutoSteamConnect={saveAutoSteamConnect}
-              onCheckAppUpdate={() => void checkAppUpdate()}
-            />
-          )}
-        </main>
+        {view === "settings" && (
+          <SettingsView
+            config={state.config}
+            configPath={state.configPath}
+            gameDir={state.gameDir}
+            manifestCount={state.manifest.length}
+            manifestSource={state.manifestSource}
+            busy={busy}
+            onSelectFolder={() => void selectFolder()}
+            onOpenGameFolder={() => void openGameFolder()}
+            onOpenModsFolder={() => void openModsFolder()}
+            onOpenConfigFolder={() => void openConfigFolder()}
+            onSavePassword={savePassword}
+            onSaveAutoSteamConnect={saveAutoSteamConnect}
+            onCheckAppUpdate={() => void checkAppUpdate()}
+          />
+        )}
+        </div>
       </div>
+
+      {showFooter && (
+        <AppFooter
+          mode={footerMode}
+          disabled={playBlocked}
+          playBlockHint={playBlockHint}
+          gameRunning={state.gameRunning}
+          loading={busy}
+          loadingLabel={state.isDownloading ? "Загрузка…" : "Проверка…"}
+          showRetry={!state.isReady && !busy && state.gameDir !== null}
+          showInstall={needsModsInstall}
+          installLabel={
+            pendingInstall > 0
+              ? `⬇  Установить ${pendingInstall} мод(ов)`
+              : "⬇  Установить моды"
+          }
+          onPlay={() => void launchGame()}
+          onRetry={retryMods}
+          onInstall={() => void installMissingMods()}
+        />
+      )}
     </div>
   );
 }
