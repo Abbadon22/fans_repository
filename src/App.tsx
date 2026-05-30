@@ -32,6 +32,9 @@ export default function App() {
   const missingModsCount = modStatuses(state.manifest, state.modCheck).filter(
     (i) => i.status === "missing",
   ).length;
+  const okModsCount = modStatuses(state.manifest, state.modCheck).filter(
+    (i) => i.status === "ok",
+  ).length;
 
   const needsModsInstall =
     state.gameDir !== null && !state.isReady && !busy && state.modCheck && !state.modCheck.ok;
@@ -62,6 +65,9 @@ export default function App() {
             status={state.status}
             hasFolder={state.gameDir !== null}
             isReady={state.isReady}
+            gameRunning={state.gameRunning}
+            manifestCount={state.manifest.length}
+            manifestOkCount={okModsCount}
             config={state.config}
             modCheck={state.modCheck}
             busy={busy}

@@ -91,10 +91,21 @@ function detectModFolders(zip) {
   return (withModInfo.length > 0 ? withModInfo : [...roots]).sort();
 }
 
-function displayName(archive, names) {
+function displayName(archive, names, override) {
+  if (override?.trim()) return override.trim();
   if (names.length === 1) return names[0];
   if (names.length > 1) return `${archive.replace(/\.zip$/i, "")} (${names.length} mods)`;
   return archive.replace(/\.zip$/i, "");
+}
+
+function parseModEntry(value) {
+  if (typeof value === "string") {
+    return { url: value, displayName: null };
+  }
+  if (value && typeof value.url === "string") {
+    return { url: value.url, displayName: value.displayName ?? null };
+  }
+  return { url: "", displayName: null };
 }
 
 async function main() {
@@ -112,7 +123,7 @@ async function main() {
   const manifest = [];
 
   for (const archive of zips) {
-    const yandexUrl = modUrls[archive];
+    const { url: yandexUrl, displayName: nameOverride } = parseModEntry(modUrls[archive]);
     if (!yandexUrl?.trim()) {
       console.warn(`⚠ ${archive}: нет URL в mod-urls.json, пропуск`);
       continue;
@@ -141,7 +152,7 @@ async function main() {
 
     manifest.push({
       archive,
-      name: displayName(archive, names),
+      name: displayName(archive, names, nameOverride),
       names,
       url: yandexUrl.trim(),
       sha256,

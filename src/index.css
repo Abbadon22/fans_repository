@@ -100,6 +100,10 @@
     @apply h-px bg-gradient-to-r from-transparent via-line-strong to-transparent;
   }
 
+  .scroll-area {
+    scrollbar-gutter: stable;
+  }
+
   .kbd-hint {
     @apply rounded border border-line bg-void/80 px-1.5 py-0.5 font-mono text-[10px] text-gray-500;
   }

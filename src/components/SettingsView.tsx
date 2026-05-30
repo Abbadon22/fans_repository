@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { LauncherConfig } from "../types";
 import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT } from "../constants";
-import { FolderSelector } from "./FolderSelector";
 import { ViewHeader } from "./ViewHeader";
 
 const RELEASES_URL = "https://github.com/Abbadon22/fans_repository/releases";
@@ -51,88 +50,95 @@ export function SettingsView({
   };
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <ViewHeader title="Настройки" subtitle={`Fans Launcher v${APP_VERSION}`} />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto px-6 py-4 lg:grid-cols-2">
-        <section className="panel p-4">
-          <p className="panel-title mb-3">Сервер</p>
-          <p className="font-mono text-sm text-white">
-            {config?.server_ip ?? FAN_SERVER_HOST}
-            <span className="text-brand">:{config?.server_port ?? FAN_SERVER_PORT}</span>
-          </p>
-          <p className="mt-2 text-[11px] text-gray-500">
-            Адрес задаётся лаунчером. Меняйте только пароль ниже.
-          </p>
-        </section>
+      <div className="scroll-area min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+        <div className="flex flex-col gap-3 px-6 py-4 pb-6">
+          <div className="grid grid-cols-2 gap-3">
+            <SettingCard title="Сервер">
+              <p className="font-mono text-sm font-semibold text-white">
+                {config?.server_ip ?? FAN_SERVER_HOST}
+                <span className="text-brand">:{config?.server_port ?? FAN_SERVER_PORT}</span>
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
+                Адрес задаётся лаунчером
+              </p>
+            </SettingCard>
 
-        <section className="panel space-y-3 p-4">
-          <p className="panel-title">Пароль сервера</p>
-          <input
-            type="password"
-            className="input-field w-full"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Пароль для подключения"
-            disabled={busy || saving}
-          />
-          <button
-            type="button"
-            className="btn-soft"
-            disabled={busy || saving || !password.trim()}
-            onClick={() => void handleSave()}
-          >
-            {saving ? "Сохранение…" : saved ? "Сохранено ✓" : "Сохранить пароль"}
-          </button>
-        </section>
-
-        <FolderSelector gameDir={gameDir} disabled={busy} onSelect={onSelectFolder} />
-
-        <section className="panel space-y-3 p-4">
-          <p className="panel-title">Лаунчер</p>
-          <p className="text-[11px] text-gray-500">
-            Автообновление с GitHub Releases. Работает у версии, установленной через setup.exe.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-soft" disabled={busy} onClick={onCheckAppUpdate}>
-              Проверить обновления
-            </button>
-            <button
-              type="button"
-              className="btn-soft"
-              onClick={() => void openUrl(RELEASES_URL)}
-            >
-              Страница релизов
-            </button>
+            <SettingCard title="Пароль сервера">
+              <input
+                type="password"
+                className="input-field w-full"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Пароль для подключения"
+                disabled={busy || saving}
+              />
+              <button
+                type="button"
+                className="btn-soft mt-2.5"
+                disabled={busy || saving || !password.trim()}
+                onClick={() => void handleSave()}
+              >
+                {saving ? "Сохранение…" : saved ? "Сохранено ✓" : "Сохранить"}
+              </button>
+            </SettingCard>
           </div>
-        </section>
 
-        <section className="panel space-y-3 p-4">
-          <p className="panel-title">Манифест модов</p>
-        <p className="text-[11px] text-gray-500">
-          Список модов — с GitHub. Zip-архивы скачиваются по ссылкам Яндекс.Диск из манифеста.
-        </p>
-          <p className="break-all text-[10px] text-gray-600">{FAN_MANIFEST_URL}</p>
-          <button
-            type="button"
-            className="btn-soft"
-            onClick={() => void openUrl(FAN_MANIFEST_URL)}
-          >
-            Открыть manifest.json
-          </button>
-        </section>
-
-        <section className="panel space-y-3 p-4 lg:col-span-2">
-          <p className="panel-title">Файлы</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-soft"
-              disabled={busy || !gameDir}
-              onClick={onOpenGameFolder}
+          <SettingCard title="Папка игры">
+            <div
+              className="input-field truncate font-mono text-xs text-gray-300"
+              title={gameDir ?? undefined}
             >
-              Папка игры
-            </button>
+              {gameDir ?? "Укажите папку Steam с 7 Days to Die"}
+            </div>
+            <p className="mt-1.5 text-xs text-gray-500">
+              Нужен файл <span className="font-mono text-gray-400">7DaysToDie.exe</span>
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <button type="button" className="btn-soft" disabled={busy} onClick={onSelectFolder}>
+                {gameDir ? "Сменить…" : "Выбрать…"}
+              </button>
+              <button
+                type="button"
+                className="btn-soft"
+                disabled={busy || !gameDir}
+                onClick={onOpenGameFolder}
+              >
+                Проводник
+              </button>
+            </div>
+          </SettingCard>
+
+          <div className="grid grid-cols-2 items-stretch gap-3">
+            <SettingCard title="Обновления" stretch footer={
+              <>
+                <button type="button" className="btn-soft" disabled={busy} onClick={onCheckAppUpdate}>
+                  Проверить
+                </button>
+                <button type="button" className="btn-soft" onClick={() => void openUrl(RELEASES_URL)}>
+                  Релизы
+                </button>
+              </>
+            }>
+              <p className="text-xs leading-relaxed text-gray-500">
+                Автообновление с GitHub Releases
+              </p>
+            </SettingCard>
+
+            <SettingCard title="Манифест модов" stretch footer={
+              <button type="button" className="btn-soft" onClick={() => void openUrl(FAN_MANIFEST_URL)}>
+                manifest.json
+              </button>
+            }>
+              <p className="text-xs leading-relaxed text-gray-500">
+                Список — GitHub, zip — Яндекс.Диск
+              </p>
+            </SettingCard>
+          </div>
+
+          <SettingCard title="Конфигурация">
             <button
               type="button"
               className="btn-soft"
@@ -141,14 +147,34 @@ export function SettingsView({
             >
               Папка config.json
             </button>
-          </div>
-          {configPath && (
-            <p className="break-all text-[10px] text-gray-600" title={configPath}>
-              {configPath}
-            </p>
-          )}
-        </section>
+            {configPath && (
+              <p className="mt-2 break-all font-mono text-[10px] leading-snug text-gray-600">
+                {configPath}
+              </p>
+            )}
+          </SettingCard>
+        </div>
       </div>
-    </>
+    </div>
+  );
+}
+
+function SettingCard({
+  title,
+  children,
+  footer,
+  stretch,
+}: {
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  stretch?: boolean;
+}) {
+  return (
+    <section className={`panel flex flex-col p-3.5 ${stretch ? "h-full" : ""}`}>
+      <h3 className="panel-title mb-2 shrink-0">{title}</h3>
+      <div className={stretch ? "flex flex-1 flex-col" : "flex flex-col gap-0"}>{children}</div>
+      {footer && <div className="mt-auto flex shrink-0 flex-wrap gap-2 pt-3">{footer}</div>}
+    </section>
   );
 }

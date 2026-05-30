@@ -1,4 +1,7 @@
 use crate::config::LauncherConfig;
+use crate::process_util::is_7dtd_running;
+#[cfg(target_os = "windows")]
+use crate::process_util::platform;
 use crate::mods::{
     check_mods_internal, download_and_install_mods_internal, load_manifest, ManifestLoadResult,
     ModCheckResult,
@@ -169,26 +172,11 @@ pub async fn download_and_install_mods(
 /// Запущен ли процесс 7DaysToDie.exe.
 #[tauri::command]
 pub fn is_game_running() -> bool {
-    game_process_running()
+    is_7dtd_running()
 }
 
 fn game_process_running() -> bool {
-    #[cfg(target_os = "windows")]
-    {
-        let output = std::process::Command::new("tasklist")
-            .args(["/FI", "IMAGENAME eq 7DaysToDie.exe", "/NH"])
-            .output();
-        match output {
-            Ok(out) => String::from_utf8_lossy(&out.stdout)
-                .to_ascii_lowercase()
-                .contains("7daystodie.exe"),
-            Err(_) => false,
-        }
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        false
-    }
+    is_7dtd_running()
 }
 
 /// Запустить 7DaysToDie.exe из папки игры.
@@ -275,7 +263,7 @@ pub async fn reveal_path(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("explorer")
+        platform::command_no_window("explorer")
             .arg(path_buf.as_os_str())
             .spawn()
             .map_err(|e| format!("Не удалось открыть проводник: {e}"))?;

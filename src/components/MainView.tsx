@@ -11,6 +11,9 @@ interface MainViewProps {
   status: string;
   hasFolder: boolean;
   isReady: boolean;
+  gameRunning: boolean;
+  manifestCount: number;
+  manifestOkCount: number;
   config: LauncherConfig | null;
   modCheck: ModCheckResult | null;
   busy: boolean;
@@ -28,6 +31,9 @@ export function MainView({
   status,
   hasFolder,
   isReady,
+  gameRunning,
+  manifestCount,
+  manifestOkCount,
   config,
   modCheck,
   busy,
@@ -39,15 +45,49 @@ export function MainView({
   onGoToMods,
   onSelectFolder,
 }: MainViewProps) {
-  const needsMods =
-    hasFolder && !isReady && !busy && modCheck && !modCheck.ok;
+  const okCount = modCheck?.ok ? manifestCount : manifestOkCount;
+  const needsMods = hasFolder && !isReady && !busy && modCheck && !modCheck.ok;
   const needsFolder = !hasFolder && !busy;
 
-  return (
-    <>
-      <AppHeader phase={phase} status={status} hasFolder={hasFolder} isReady={isReady} />
+  const stats = [
+    {
+      label: "Игра",
+      value: gameRunning
+        ? "Запущена"
+        : isReady
+          ? "Готова"
+          : busy
+            ? "Подготовка…"
+            : "Не готова",
+      tone: gameRunning ? "active" : isReady ? "ok" : busy ? "neutral" : "warn",
+      onClick: undefined as (() => void) | undefined,
+    },
+    {
+      label: "Моды",
+      value: manifestCount > 0 ? `${okCount} / ${manifestCount}` : "—",
+      tone: modCheck?.ok ? "ok" : needsMods ? "warn" : "neutral",
+      onClick: needsMods ? onGoToMods : undefined,
+    },
+    {
+      label: "Папка",
+      value: hasFolder ? "Выбрана" : "Не выбрана",
+      tone: hasFolder ? "ok" : "warn",
+      onClick: !hasFolder ? onSelectFolder : undefined,
+    },
+  ] as const;
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 pb-4 pt-1">
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <AppHeader
+        phase={phase}
+        status={status}
+        hasFolder={hasFolder}
+        isReady={isReady}
+        gameRunning={gameRunning}
+        stats={stats}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 py-4">
         {needsFolder && (
           <AlertBanner
             variant="info"
@@ -58,7 +98,7 @@ export function MainView({
           />
         )}
 
-        {needsMods && (
+        {!needsFolder && needsMods && (
           <AlertBanner
             variant="warn"
             title="Требуется обновление модов"
@@ -68,22 +108,29 @@ export function MainView({
           />
         )}
 
+        {!needsFolder && !needsMods && gameRunning && (
+          <AlertBanner
+            variant="info"
+            title="Игра запущена"
+            message="Закройте 7 Days to Die, чтобы снова нажать «Играть» в лаунчере"
+          />
+        )}
+
         {(showProgress || showCheckingBar) && (
           <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
         )}
 
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(280px,380px)_minmax(0,1fr)] gap-4">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
           {config ? (
-            <ServerCard config={config} />
+            <ServerCard config={config} className="min-h-[280px] lg:min-h-0" />
           ) : (
-            <section className="panel flex items-center justify-center p-6 text-sm text-gray-500">
+            <section className="panel flex min-h-[200px] items-center justify-center p-6 text-sm text-gray-500">
               Загрузка…
             </section>
           )}
-
-          <StatusLog logs={logs} onClear={onClearLogs} />
+          <StatusLog logs={logs} onClear={onClearLogs} className="min-h-[280px] lg:min-h-0" />
         </div>
       </div>
-    </>
+    </div>
   );
 }

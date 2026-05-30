@@ -21,6 +21,19 @@ npm run manifest:sync -- --hash-from-yandex
 
 4. Закоммитьте `manifest.json` в репозиторий — игрокам пересборка лаунчера не нужна.
 
+## Переименовать мод в лаунчере
+
+В `scripts/mod-urls.json` задайте **`displayName`** — только подпись в UI (папка в игре не меняется):
+
+```json
+"ProjectZv2.6.zip": {
+  "url": "https://disk.yandex.ru/d/oRstuop_EmDTqQ",
+  "displayName": "Project Z"
+}
+```
+
+Затем `npm run manifest:sync` и push `manifest.json`. Поле `names` должно совпадать с **папкой внутри zip**.
+
 ## Если порядок ссылок неизвестен
 
 Сопоставление по SHA256 (скачивает все ссылки с Яндекса):

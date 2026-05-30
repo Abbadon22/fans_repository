@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod mods;
+mod process_util;
 
 use commands::AppState;
 use config::LauncherConfig;

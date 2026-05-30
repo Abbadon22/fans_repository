@@ -56,8 +56,8 @@ jobs:
 
             - Скачайте **Fans Launcher_*_x64-setup.exe** (установщик Windows)
             - Уже установленным копиям обновление придёт автоматически (`latest.json`)
-            - Детекция запущенной игры, emerald UI, улучшенная вкладка «Моды»
-            - +2 мода: ProjectZv2.6, SMXcore
+            - Исправлено мелькание консоли при проверке и установке модов
+            - Проверка запущенной игры без `tasklist` (sysinfo)
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

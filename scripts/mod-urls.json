@@ -10,6 +10,9 @@
   "-2.6-N.V.A-weapons-expansion-Server-side-.zip": "https://disk.yandex.ru/d/Ms7FGNtemx8DgQ",
   "EurekaLootableZombieCorpseBONUS.zip": "https://disk.yandex.ru/d/oXPe9-5w0UihwQ",
   "ErionaxFirearmsAdditions.zip": "https://disk.yandex.ru/d/n6z8JFgQKfoLeA",
-  "ProjectZv2.6.zip": "https://disk.yandex.ru/d/oRstuop_EmDTqQ",
+  "ProjectZv2.6.zip": {
+    "url": "https://disk.yandex.ru/d/oRstuop_EmDTqQ",
+    "displayName": "Project Z"
+  },
   "SMXcore.zip": "https://disk.yandex.ru/d/dWoewHHGRSojbQ"
 }

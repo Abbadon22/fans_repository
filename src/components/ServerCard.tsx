@@ -5,9 +5,10 @@ import { FAN_SERVER_HOST, FAN_SERVER_PORT } from "../constants";
 
 interface ServerCardProps {
   config: LauncherConfig;
+  className?: string;
 }
 
-export function ServerCard({ config }: ServerCardProps) {
+export function ServerCard({ config, className = "" }: ServerCardProps) {
   const [copied, setCopied] = useState<"ip" | "steam" | null>(null);
   const address = `${config.server_ip}:${config.server_port}`;
   const isOfficial =
@@ -35,43 +36,44 @@ export function ServerCard({ config }: ServerCardProps) {
   };
 
   return (
-    <section className="panel relative overflow-hidden p-0">
+    <section className={`panel relative flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
       <div
         className="absolute inset-0 bg-gradient-to-br from-brand/12 via-transparent to-sky/5"
         aria-hidden
       />
-      <div className="relative p-4">
-        <div className="mb-3 flex items-start justify-between gap-2">
+      <div className="relative flex flex-1 flex-col p-4">
+        <div className="mb-4 flex items-start justify-between gap-2">
           <div>
             <p className="panel-title">Сервер группы</p>
             {isOfficial && (
-              <p className="mt-1 flex items-center gap-1 text-[10px] text-mint">
-                <span className="h-1.5 w-1.5 rounded-full bg-mint" />
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-mint">
+                <span className="h-2 w-2 rounded-full bg-mint shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
                 Официальный хост Fans
               </p>
             )}
           </div>
-          <div className="flex gap-1">
-            <button type="button" className="btn-soft text-[10px]" onClick={() => void copyAddress()}>
-              {copied === "ip" ? "✓ IP" : "Копировать IP"}
-            </button>
-            <button type="button" className="btn-soft text-[10px]" onClick={() => void copySteamLink()}>
-              {copied === "steam" ? "✓ Steam" : "Steam-ссылка"}
-            </button>
-          </div>
         </div>
 
-        <div className="rounded-xl border border-line-strong bg-void/60 px-4 py-3.5 backdrop-blur-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+        <div className="rounded-xl border border-line-strong bg-void/60 px-4 py-4 backdrop-blur-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
             Подключение в игре
           </p>
-          <p className="mt-1 font-mono text-lg font-semibold tracking-tight text-white">
+          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-white">
             {config.server_ip}
             <span className="text-brand">:{config.server_port}</span>
           </p>
-          <p className="mt-2 text-[10px] text-gray-600">
+          <p className="mt-3 text-sm leading-relaxed text-gray-500">
             Мультиплеер → Подключиться → введите IP и пароль из настроек
           </p>
+        </div>
+
+        <div className="mt-auto flex gap-2 pt-4">
+          <button type="button" className="btn-soft min-w-0 flex-1" onClick={() => void copyAddress()}>
+            {copied === "ip" ? "✓ IP" : "Копировать IP"}
+          </button>
+          <button type="button" className="btn-soft min-w-0 flex-1" onClick={() => void copySteamLink()}>
+            {copied === "steam" ? "✓ Steam" : "Steam-ссылка"}
+          </button>
         </div>
       </div>
     </section>

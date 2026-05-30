@@ -1,6 +1,6 @@
 [package]
 name = "fans-launcher"
-version = "1.0.8"
+version = "1.0.10"
 description = "7 Days to Die launcher for closed group"
 authors = ["Fans"]
 edition = "2021"
@@ -27,6 +27,7 @@ hex = "0.4"
 futures-util = "0.3"
 urlencoding = "2"
 tauri-plugin-process = "2"
+sysinfo = "0.33"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

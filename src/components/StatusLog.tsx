@@ -3,9 +3,10 @@ import { useEffect, useRef } from "react";
 interface StatusLogProps {
   logs: string[];
   onClear?: () => void;
+  className?: string;
 }
 
-export function StatusLog({ logs, onClear }: StatusLogProps) {
+export function StatusLog({ logs, onClear, className = "" }: StatusLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -14,18 +15,18 @@ export function StatusLog({ logs, onClear }: StatusLogProps) {
   }, [logs]);
 
   return (
-    <section className="panel flex h-full min-h-0 flex-col overflow-hidden p-0">
+    <section className={`panel flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
       <div className="flex items-center justify-between border-b border-line px-3 py-2">
         <p className="panel-title">Журнал</p>
         {onClear && logs.length > 0 && (
-          <button type="button" className="btn-soft px-2 py-1 text-[10px]" onClick={onClear}>
+          <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onClear}>
             Очистить
           </button>
         )}
       </div>
       <div
         ref={scrollRef}
-        className="scroll-area flex-1 overflow-y-auto bg-void/40 p-3 font-mono text-[11px] leading-relaxed"
+        className="scroll-area flex-1 overflow-y-auto bg-void/40 p-3 font-mono text-xs leading-relaxed"
       >
         {logs.length === 0 ? (
           <span className="text-gray-600">// ожидание событий</span>

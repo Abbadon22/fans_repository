@@ -37,7 +37,7 @@ export function StepIndicator({ phase, hasFolder, isReady }: StepIndicatorProps)
               />
             )}
             <span
-              className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition ${
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
                 done
                   ? "bg-mint/10 text-mint"
                   : current
