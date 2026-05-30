@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { LauncherConfig } from "../types";
-import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT } from "../constants";
+import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT, WHATS_NEW } from "../constants";
 import { ViewHeader } from "./ViewHeader";
 
 const RELEASES_URL = "https://github.com/Abbadon22/fans_repository/releases";
@@ -10,11 +10,14 @@ interface SettingsViewProps {
   config: LauncherConfig | null;
   configPath: string | null;
   gameDir: string | null;
+  manifestCount: number;
+  manifestSource: string | null;
   busy: boolean;
   onSelectFolder: () => void;
   onOpenGameFolder: () => void;
   onOpenConfigFolder: () => void;
   onSavePassword: (password: string) => Promise<void>;
+  onSaveAutoSteamConnect: (enabled: boolean) => Promise<void>;
   onCheckAppUpdate: () => void;
 }
 
@@ -22,16 +25,20 @@ export function SettingsView({
   config,
   configPath,
   gameDir,
+  manifestCount,
+  manifestSource,
   busy,
   onSelectFolder,
   onOpenGameFolder,
   onOpenConfigFolder,
   onSavePassword,
+  onSaveAutoSteamConnect,
   onCheckAppUpdate,
 }: SettingsViewProps) {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const autoSteam = config?.auto_steam_connect !== false;
 
   useEffect(() => {
     if (config) setPassword(config.server_password);
@@ -111,6 +118,22 @@ export function SettingsView({
             </div>
           </SettingCard>
 
+          <SettingCard title="Запуск игры">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-line bg-void accent-brand"
+                checked={autoSteam}
+                disabled={busy}
+                onChange={(e) => void onSaveAutoSteamConnect(e.target.checked)}
+              />
+              <span className="text-sm leading-relaxed text-gray-300">
+                После «Играть» открывать подключение к серверу через Steam (
+                <span className="font-mono text-xs text-gray-500">steam://connect</span>)
+              </span>
+            </label>
+          </SettingCard>
+
           <div className="grid grid-cols-2 items-stretch gap-3">
             <SettingCard title="Обновления" stretch footer={
               <>
@@ -132,11 +155,27 @@ export function SettingsView({
                 manifest.json
               </button>
             }>
-              <p className="text-xs leading-relaxed text-gray-500">
-                Список — GitHub, zip — Яндекс.Диск
+              <p className="text-sm font-semibold tabular-nums text-white">
+                {manifestCount > 0 ? `${manifestCount} модов` : "—"}
+              </p>
+              {manifestSource && (
+                <p className="mt-1.5 truncate text-[10px] text-gray-500" title={manifestSource}>
+                  {manifestSource}
+                </p>
+              )}
+              <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
+                Лишние папки в Mods/ удаляются при проверке
               </p>
             </SettingCard>
           </div>
+
+          <SettingCard title={`Что нового в v${APP_VERSION}`}>
+            <ul className="list-inside list-disc space-y-1 text-xs leading-relaxed text-gray-400">
+              {WHATS_NEW.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </SettingCard>
 
           <SettingCard title="Конфигурация">
             <button

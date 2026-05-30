@@ -5,6 +5,7 @@ interface ModsPanelProps {
   manifest: ModManifestEntry[];
   manifestSource: string | null;
   modCheck: ModCheckResult | null;
+  pendingInstall: number;
   busy: boolean;
   onRefresh: () => void;
   hideHeader?: boolean;
@@ -14,6 +15,7 @@ export function ModsPanel({
   manifest,
   manifestSource,
   modCheck,
+  pendingInstall,
   busy,
   onRefresh,
   hideHeader = false,
@@ -22,6 +24,8 @@ export function ModsPanel({
   const okCount = items.filter((i) => i.status === "ok").length;
   const missingCount = items.filter((i) => i.status === "missing").length;
   const unknownCount = items.length - okCount - missingCount;
+  const removed = modCheck?.removed ?? [];
+  const upToDate = Math.max(0, manifest.length - pendingInstall - missingCount);
 
   return (
     <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden p-0">
@@ -52,12 +56,19 @@ export function ModsPanel({
         {manifest.length > 0 && (
           <div className="grid shrink-0 grid-cols-3 gap-2">
             <StatCard label="Всего" value={manifest.length} tone="neutral" />
-            <StatCard label="Установлено" value={okCount} tone="ok" />
+            <StatCard label="Актуально" value={okCount} tone="ok" />
             <StatCard
-              label="Нужно обновить"
-              value={missingCount + unknownCount}
-              tone={missingCount > 0 ? "warn" : "neutral"}
+              label="К загрузке"
+              value={pendingInstall > 0 ? pendingInstall : missingCount + unknownCount}
+              tone={pendingInstall > 0 || missingCount > 0 ? "warn" : "neutral"}
             />
+          </div>
+        )}
+
+        {removed.length > 0 && !busy && (
+          <div className="shrink-0 rounded-xl border border-line-strong bg-void/50 px-4 py-3 text-sm text-gray-300">
+            <p className="font-semibold text-gray-200">Удалено с диска (нет в манифесте)</p>
+            <p className="mt-1 text-xs text-gray-500">{removed.join(", ")}</p>
           </div>
         )}
 
@@ -71,10 +82,15 @@ export function ModsPanel({
               Обновите список или проверьте manifest.json на GitHub
             </p>
           </div>
+        ) : pendingInstall > 0 && !busy ? (
+          <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
+            <span className="font-semibold">{pendingInstall} мод(ов)</span> будут скачаны — остальные{" "}
+            {upToDate > 0 ? `(${upToDate} актуальны)` : ""} пропущены. Нажмите «Установить» внизу.
+          </div>
         ) : missingCount > 0 && !busy ? (
           <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
             <span className="font-semibold">{missingCount} мод(ов)</span> требуют установки или
-            обновления — нажмите «Установить / обновить моды» внизу.
+            обновления — нажмите «Установить» внизу.
           </div>
         ) : null}
 

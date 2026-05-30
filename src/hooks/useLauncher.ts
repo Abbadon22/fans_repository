@@ -104,7 +104,7 @@ export function useLauncher() {
     }
   }, [appendLog, patch]);
 
-  const runModPipeline = useCallback(async () => {
+  const runModCheckOnly = useCallback(async () => {
     hadError.current = false;
     patch({
       isChecking: true,
@@ -112,7 +112,6 @@ export function useLauncher() {
       progress: 0,
       downloadProgress: null,
       status: "Проверка модов…",
-      modCheck: null,
     });
 
     try {
@@ -129,16 +128,68 @@ export function useLauncher() {
           downloadProgress: null,
           status: "Готово к запуску",
         });
-        return;
+        return check;
       }
 
-      appendLog(`Требуется обновление: ${check.missing.length} проблем(ы).`);
+      if (check.removed?.length) {
+        appendLog(`Удалено из Mods/: ${check.removed.join(", ")}`);
+      }
+
+      const pending = check.pending_install ?? 0;
+      appendLog(
+        pending > 0
+          ? `Нужно установить или обновить: ${pending} мод(ов). Нажмите «Установить» на вкладке «Моды».`
+          : `Требуется внимание: ${check.missing.length} проблем(ы).`,
+      );
       patch({
         isChecking: false,
-        isDownloading: true,
+        isDownloading: false,
+        isReady: false,
+        progress: 0,
         downloadProgress: null,
-        status: "Загрузка и установка модов…",
+        status:
+          pending > 0
+            ? `Нужно обновить ${pending} мод(ов)`
+            : "Проверьте моды во вкладке «Моды»",
       });
+      hadError.current = true;
+      return check;
+    } catch (e) {
+      hadError.current = true;
+      const msg = e instanceof Error ? e.message : String(e);
+      appendLog(`Ошибка: ${msg}`);
+      patch({
+        isChecking: false,
+        isDownloading: false,
+        isReady: false,
+        downloadProgress: null,
+        status: "Ошибка — см. журнал",
+      });
+      return null;
+    }
+  }, [appendLog, patch]);
+
+  const runInstallPipeline = useCallback(async () => {
+    if (!state.gameDir) {
+      appendLog("Сначала выберите папку с игрой");
+      return;
+    }
+    hadError.current = false;
+    patch({
+      isChecking: false,
+      isDownloading: true,
+      isReady: false,
+      downloadProgress: null,
+      status: "Загрузка и установка модов…",
+    });
+
+    try {
+      const pending = state.modCheck?.pending_install;
+      if (pending && pending > 0) {
+        appendLog(`Загрузка ${pending} мод(ов)…`);
+      } else {
+        appendLog("Загрузка недостающих модов…");
+      }
 
       await invoke<string>("download_and_install_mods");
 
@@ -151,20 +202,26 @@ export function useLauncher() {
         downloadProgress: null,
         status: after.ok ? "Готово к запуску" : "Ошибка после установки",
       });
-      if (!after.ok) hadError.current = true;
+      if (after.ok) {
+        appendLog("Моды установлены.");
+      } else {
+        hadError.current = true;
+        appendLog("После установки остались проблемы — см. вкладку «Моды»");
+      }
     } catch (e) {
       hadError.current = true;
       const msg = e instanceof Error ? e.message : String(e);
-      appendLog(`Ошибка: ${msg}`);
+      appendLog(`Ошибка установки: ${msg}`);
       patch({
-        isChecking: false,
         isDownloading: false,
         isReady: false,
         downloadProgress: null,
-        status: "Ошибка — см. журнал",
+        status: "Ошибка загрузки модов",
       });
     }
-  }, [appendLog, patch]);
+  }, [appendLog, patch, state.gameDir, state.modCheck?.pending_install]);
+
+  const runModPipeline = runModCheckOnly;
 
   const selectFolder = useCallback(async () => {
     try {
@@ -199,52 +256,12 @@ export function useLauncher() {
   }, [appendLog, patch, setStatus]);
 
   const installMissingMods = useCallback(async () => {
-    if (!state.gameDir) {
-      appendLog("Сначала выберите папку с игрой");
-      return;
-    }
-    hadError.current = false;
-    patch({
-      isChecking: false,
-      isDownloading: true,
-      isReady: false,
-      downloadProgress: null,
-      status: "Загрузка и установка модов…",
-    });
-    try {
-      appendLog("Загрузка модов из манифеста…");
-      await invoke<string>("download_and_install_mods");
-      const after = await invoke<ModCheckResult>("check_mods");
-      patch({
-        modCheck: after,
-        isDownloading: false,
-        isReady: after.ok,
-        progress: 100,
-        downloadProgress: null,
-        status: after.ok ? "Готово к запуску" : "Ошибка после установки",
-      });
-      if (after.ok) {
-        appendLog("Моды установлены.");
-      } else {
-        hadError.current = true;
-        appendLog("После установки остались проблемы — см. вкладку «Моды»");
-      }
-    } catch (e) {
-      hadError.current = true;
-      const msg = e instanceof Error ? e.message : String(e);
-      appendLog(`Ошибка установки: ${msg}`);
-      patch({
-        isDownloading: false,
-        isReady: false,
-        downloadProgress: null,
-        status: "Ошибка загрузки модов",
-      });
-    }
-  }, [appendLog, patch, state.gameDir]);
+    await runInstallPipeline();
+  }, [runInstallPipeline]);
 
   const retryMods = useCallback(() => {
-    void runModPipeline();
-  }, [runModPipeline]);
+    void runInstallPipeline();
+  }, [runInstallPipeline]);
 
   const refreshModsCheck = useCallback(() => {
     if (!state.gameDir || state.isChecking || state.isDownloading) return;
@@ -260,7 +277,11 @@ export function useLauncher() {
         patch({
           isChecking: false,
           isReady: check?.ok ?? false,
-          status: check?.ok ? "Готово к запуску" : "Нужно обновить моды",
+          status: check?.ok
+            ? "Готово к запуску"
+            : (check?.pending_install ?? 0) > 0
+              ? `Нужно обновить ${check?.pending_install} мод(ов)`
+              : "Нужно обновить моды",
         });
         if (check && !check.ok) hadError.current = true;
       } catch (e) {
@@ -414,6 +435,28 @@ export function useLauncher() {
     })();
   }, [appendLog, patch, runModPipeline, selectFolder, setStatus]);
 
+  const saveAutoSteamConnect = useCallback(
+    async (enabled: boolean) => {
+      const config = await invoke<LauncherConfig>("save_auto_steam_connect", { enabled });
+      patch({ config });
+    },
+    [patch],
+  );
+
+  const exportLogs = useCallback(async () => {
+    const text = state.logs.join("\n");
+    if (!text.trim()) {
+      appendLog("Журнал пуст — нечего сохранять");
+      return;
+    }
+    try {
+      const path = await invoke<string | null>("export_logs", { content: text });
+      if (path) appendLog(`Журнал сохранён: ${path}`);
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog, state.logs]);
+
   return {
     state,
     selectFolder,
@@ -424,6 +467,8 @@ export function useLauncher() {
     openGameFolder,
     openConfigFolder,
     savePassword,
+    saveAutoSteamConnect,
+    exportLogs,
     clearLogs,
     checkAppUpdate: () => checkAppUpdate(appendLog),
   };

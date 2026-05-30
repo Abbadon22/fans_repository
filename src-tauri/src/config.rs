@@ -28,6 +28,13 @@ pub struct LauncherConfig {
     pub manifest_url: String,
     #[serde(default)]
     pub game_dir: Option<String>,
+    /// После запуска игры открыть steam://connect (Steam-версия).
+    #[serde(default = "default_auto_steam_connect")]
+    pub auto_steam_connect: bool,
+}
+
+fn default_auto_steam_connect() -> bool {
+    true
 }
 
 impl LauncherConfig {
@@ -130,6 +137,7 @@ impl LauncherConfig {
             server_password: FAN_DEFAULT_PASSWORD.to_string(),
             manifest_url: default_manifest_url(),
             game_dir: None,
+            auto_steam_connect: true,
         }
     }
 

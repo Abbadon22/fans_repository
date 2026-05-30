@@ -20,6 +20,8 @@ export default function App() {
     openGameFolder,
     openConfigFolder,
     savePassword,
+    saveAutoSteamConnect,
+    exportLogs,
     clearLogs,
     checkAppUpdate,
   } = useLauncher();
@@ -36,8 +38,10 @@ export default function App() {
     (i) => i.status === "ok",
   ).length;
 
+  const pendingInstall = state.modCheck?.pending_install ?? 0;
+
   const needsModsInstall =
-    state.gameDir !== null && !state.isReady && !busy && state.modCheck && !state.modCheck.ok;
+    state.gameDir !== null && !state.isReady && !busy && pendingInstall > 0;
 
   useEffect(() => {
     if (autoModsNavDone.current || busy || !needsModsInstall) return;
@@ -70,12 +74,15 @@ export default function App() {
             manifestOkCount={okModsCount}
             config={state.config}
             modCheck={state.modCheck}
+            removedMods={state.modCheck?.removed ?? []}
+            pendingInstall={pendingInstall}
             busy={busy}
             showProgress={showProgress || showCheckingBar}
             showCheckingBar={showCheckingBar}
             downloadProgress={state.downloadProgress}
             logs={state.logs}
             onClearLogs={clearLogs}
+            onExportLogs={() => void exportLogs()}
             onGoToMods={() => setView("mods")}
             onSelectFolder={() => void selectFolder()}
           />
@@ -90,6 +97,7 @@ export default function App() {
             showProgress={showProgress || showCheckingBar}
             showCheckingBar={showCheckingBar}
             downloadProgress={state.downloadProgress}
+            pendingInstall={pendingInstall}
             onRefresh={refreshModsCheck}
           />
         )}
@@ -99,11 +107,14 @@ export default function App() {
             config={state.config}
             configPath={state.configPath}
             gameDir={state.gameDir}
+            manifestCount={state.manifest.length}
+            manifestSource={state.manifestSource}
             busy={busy}
             onSelectFolder={() => void selectFolder()}
             onOpenGameFolder={() => void openGameFolder()}
             onOpenConfigFolder={() => void openConfigFolder()}
             onSavePassword={savePassword}
+            onSaveAutoSteamConnect={saveAutoSteamConnect}
             onCheckAppUpdate={() => void checkAppUpdate()}
           />
         )}
@@ -117,7 +128,12 @@ export default function App() {
           loading={busy}
           loadingLabel={state.isDownloading ? "Загрузка…" : "Проверка…"}
           showRetry={!state.isReady && !busy && state.gameDir !== null}
-          showInstall={Boolean(needsModsInstall)}
+          showInstall={needsModsInstall}
+          installLabel={
+            pendingInstall > 0
+              ? `⬇  Установить ${pendingInstall} мод(ов)`
+              : "⬇  Установить моды"
+          }
           onPlay={() => void launchGame()}
           onRetry={retryMods}
           onInstall={() => void installMissingMods()}

@@ -6,6 +6,8 @@ export interface LauncherConfig {
   /** URL JSON-манифеста модов на сервере. */
   manifest_url: string;
   game_dir: string | null;
+  /** После «Играть» открыть steam://connect (по умолчанию true). */
+  auto_steam_connect?: boolean;
 }
 
 /** Ответ загрузки манифеста с бэкенда. */
@@ -29,6 +31,8 @@ export interface ModManifestEntry {
 export interface ModCheckResult {
   ok: boolean;
   missing: string[];
+  removed: string[];
+  pending_install: number;
 }
 
 /** Детальный прогресс загрузки с бэкенда. */

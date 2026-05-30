@@ -6,8 +6,7 @@
 -->
 <adminTools>
   <users>
-    <!-- Раскомментируйте и подставьте свой SteamID64 для админки в игре (permission_level="0") -->
-    <!-- <user platform="Steam" userid="76561198021925107" name="Admin" permission_level="0" /> -->
+    <user platform="Steam" userid="76561198953811404" name="Abbadon" permission_level="0" />
   </users>
   <whitelist />
   <blacklist />

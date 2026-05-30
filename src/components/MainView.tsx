@@ -16,12 +16,15 @@ interface MainViewProps {
   manifestOkCount: number;
   config: LauncherConfig | null;
   modCheck: ModCheckResult | null;
+  removedMods: string[];
+  pendingInstall: number;
   busy: boolean;
   showProgress: boolean;
   showCheckingBar: boolean;
   downloadProgress: DownloadProgress | null;
   logs: string[];
   onClearLogs: () => void;
+  onExportLogs: () => void;
   onGoToMods: () => void;
   onSelectFolder: () => void;
 }
@@ -36,12 +39,15 @@ export function MainView({
   manifestOkCount,
   config,
   modCheck,
+  removedMods,
+  pendingInstall,
   busy,
   showProgress,
   showCheckingBar,
   downloadProgress,
   logs,
   onClearLogs,
+  onExportLogs,
   onGoToMods,
   onSelectFolder,
 }: MainViewProps) {
@@ -102,9 +108,21 @@ export function MainView({
           <AlertBanner
             variant="warn"
             title="Требуется обновление модов"
-            message={`${modCheck.missing.length} проблем — откройте вкладку «Моды»`}
+            message={
+              pendingInstall > 0
+                ? `К загрузке: ${pendingInstall} мод(ов) — откройте вкладку «Моды» и нажмите «Установить»`
+                : `${modCheck?.missing.length ?? 0} проблем — см. вкладку «Моды»`
+            }
             actionLabel="К модам"
             onAction={onGoToMods}
+          />
+        )}
+
+        {!needsFolder && removedMods.length > 0 && !busy && (
+          <AlertBanner
+            variant="info"
+            title="Очистка модпака"
+            message={`Удалены папки, которых нет в манифесте: ${removedMods.join(", ")}`}
           />
         )}
 
@@ -128,7 +146,7 @@ export function MainView({
               Загрузка…
             </section>
           )}
-          <StatusLog logs={logs} onClear={onClearLogs} className="min-h-[280px] lg:min-h-0" />
+          <StatusLog logs={logs} onClear={onClearLogs} onExport={onExportLogs} className="min-h-[280px] lg:min-h-0" />
         </div>
       </div>
     </div>

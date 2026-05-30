@@ -8,6 +8,7 @@ use crate::mods::{
 };
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_opener::OpenerExt;
 use tokio::sync::Mutex;
 
 /// Глобальное состояние приложения (кэш конфига).
@@ -124,8 +125,19 @@ pub async fn check_mods(
             loaded.entries.len()
         ),
     );
-    let _ = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
-    let result = check_mods_internal(&config, &loaded.entries);
+    let removed = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
+    let mut result = check_mods_internal(&config, &loaded.entries);
+    result.removed = removed;
+
+    if !result.removed.is_empty() {
+        emit_log(
+            &app,
+            &format!(
+                "Удалено {} мод(ов), не входящих в манифест",
+                result.removed.len()
+            ),
+        );
+    }
 
     if result.ok {
         emit_log(&app, "Проверка модов: всё в порядке.");
@@ -221,7 +233,25 @@ pub async fn launch_game(app: AppHandle, state: State<'_, AppState>) -> Result<S
         .spawn()
         .map_err(|e| format!("Не удалось запустить игру: {e}"))?;
 
-    Ok("Игра запущена — подключитесь к серверу вручную".to_string())
+    let mut message = "Игра запущена".to_string();
+    if config.auto_steam_connect {
+        let steam_url = build_steam_connect_url(
+            &config.server_ip,
+            config.server_port,
+            &config.server_password,
+        );
+        emit_log(&app, "Подключение к серверу через Steam…");
+        if let Err(e) = app.opener().open_url(&steam_url, None::<&str>) {
+            emit_log(&app, &format!("Steam connect: {e}"));
+            message.push_str(" — откройте сервер вручную (Steam connect не удался)");
+        } else {
+            message.push_str(" — Steam открыл подключение к серверу");
+        }
+    } else {
+        message.push_str(" — подключитесь к серверу вручную в игре");
+    }
+
+    Ok(message)
 }
 
 /// Ссылка steam://connect для ярлыка / ручного копирования.
@@ -233,6 +263,47 @@ pub async fn get_steam_connect_url(state: State<'_, AppState>) -> Result<String,
         config.server_port,
         &config.server_password,
     ))
+}
+
+/// Включить/выключить автоподключение Steam после запуска игры.
+#[tauri::command]
+pub async fn save_auto_steam_connect(
+    enabled: bool,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<LauncherConfig, String> {
+    let mut config = state.config.lock().await;
+    config.auto_steam_connect = enabled;
+    config.save()?;
+    emit_log(
+        &app,
+        if enabled {
+            "Автоподключение Steam: включено"
+        } else {
+            "Автоподключение Steam: выключено"
+        },
+    );
+    Ok(config.clone())
+}
+
+/// Сохранить журнал в текстовый файл.
+#[tauri::command]
+pub async fn export_logs(content: String) -> Result<Option<String>, String> {
+    let file = rfd::AsyncFileDialog::new()
+        .set_title("Сохранить журнал")
+        .set_file_name("fans-launcher-log.txt")
+        .add_filter("Текст", &["txt"])
+        .save_file()
+        .await;
+
+    let Some(file) = file else {
+        return Ok(None);
+    };
+
+    std::fs::write(file.path(), content.as_bytes())
+        .map_err(|e| format!("Не удалось сохранить файл: {e}"))?;
+
+    Ok(Some(file.path().to_string_lossy().into_owned()))
 }
 
 /// Путь к config.json для отображения в UI.

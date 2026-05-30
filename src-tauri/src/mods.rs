@@ -79,6 +79,10 @@ impl ModManifestEntry {
 pub struct ModCheckResult {
     pub ok: bool,
     pub missing: Vec<String>,
+    /// Папки, удалённые как не входящие в манифест.
+    pub removed: Vec<String>,
+    /// Сколько архивов нужно скачать/переустановить.
+    pub pending_install: usize,
 }
 
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
@@ -360,7 +364,12 @@ pub fn check_mods_internal(
         Ok(p) => p,
         Err(e) => {
             missing.push(e);
-            return ModCheckResult { ok: false, missing };
+            return ModCheckResult {
+                ok: false,
+                missing,
+                removed: Vec::new(),
+                pending_install: 0,
+            };
         }
     };
 
@@ -371,6 +380,8 @@ pub fn check_mods_internal(
         return ModCheckResult {
             ok: missing.is_empty(),
             missing,
+            removed: Vec::new(),
+            pending_install: manifest.len(),
         };
     }
 
@@ -401,9 +412,15 @@ pub fn check_mods_internal(
         }
     }
 
+    let pending_install = entries_needing_install(config, manifest)
+        .map(|v| v.len())
+        .unwrap_or(manifest.len());
+
     ModCheckResult {
         ok: missing.is_empty(),
         missing,
+        removed: Vec::new(),
+        pending_install,
     }
 }
 

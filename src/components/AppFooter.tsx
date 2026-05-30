@@ -10,6 +10,7 @@ interface AppFooterProps {
   loadingLabel: string;
   showRetry: boolean;
   showInstall: boolean;
+  installLabel?: string;
   onPlay: () => void;
   onRetry: () => void;
   onInstall: () => void;
@@ -23,6 +24,7 @@ export function AppFooter({
   loadingLabel,
   showRetry,
   showInstall,
+  installLabel = "⬇  Установить моды",
   onPlay,
   onRetry,
   onInstall,
@@ -39,7 +41,7 @@ export function AppFooter({
           >
             {loading && loadingLabel.includes("Загрузка")
               ? loadingLabel
-              : "⬇  Установить / обновить моды"}
+              : installLabel}
           </button>
         )}
         <div className="order-1 min-w-0 flex-1 sm:order-2">
@@ -56,7 +58,7 @@ export function AppFooter({
       </div>
       {mode === "main" && !disabled && !loading && !gameRunning && (
         <p className="mt-2 text-center text-xs text-gray-600">
-          После запуска подключитесь к серверу вручную в игре
+          После запуска Steam подключит к серверу (можно отключить в настройках)
         </p>
       )}
     </footer>

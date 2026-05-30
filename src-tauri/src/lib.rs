@@ -23,6 +23,8 @@ pub fn run() {
             commands::get_config,
             commands::get_config_path,
             commands::save_server_password,
+            commands::save_auto_steam_connect,
+            commands::export_logs,
             commands::get_manifest,
             commands::reveal_path,
             commands::check_mods,

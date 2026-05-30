@@ -3,10 +3,11 @@ import { useEffect, useRef } from "react";
 interface StatusLogProps {
   logs: string[];
   onClear?: () => void;
+  onExport?: () => void;
   className?: string;
 }
 
-export function StatusLog({ logs, onClear, className = "" }: StatusLogProps) {
+export function StatusLog({ logs, onClear, onExport, className = "" }: StatusLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,6 +22,11 @@ export function StatusLog({ logs, onClear, className = "" }: StatusLogProps) {
         {onClear && logs.length > 0 && (
           <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onClear}>
             Очистить
+          </button>
+        )}
+        {onExport && logs.length > 0 && (
+          <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onExport}>
+            Сохранить
           </button>
         )}
       </div>

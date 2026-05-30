@@ -13,6 +13,7 @@ interface ModsViewProps {
   showProgress: boolean;
   showCheckingBar: boolean;
   downloadProgress: DownloadProgress | null;
+  pendingInstall: number;
   onRefresh: () => void;
 }
 
@@ -24,6 +25,7 @@ export function ModsView({
   showProgress,
   showCheckingBar,
   downloadProgress,
+  pendingInstall,
   onRefresh,
 }: ModsViewProps) {
   const items = modStatuses(manifest, modCheck);
@@ -62,6 +64,7 @@ export function ModsView({
           manifest={manifest}
           manifestSource={null}
           modCheck={modCheck}
+          pendingInstall={pendingInstall}
           busy={busy}
           onRefresh={onRefresh}
           hideHeader

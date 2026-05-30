@@ -25,12 +25,16 @@ export function ProgressBar({ progress, visible, checking }: ProgressBarProps) {
 
   const clamped = Math.min(100, Math.max(0, progress.percent));
   const hasTotal = progress.totalBytes > 0;
+  const modStep =
+    progress.modTotal > 0
+      ? ` · мод ${Math.min(progress.modIndex + 1, progress.modTotal)}/${progress.modTotal}`
+      : "";
 
   return (
     <div className="panel space-y-3 p-4">
       <div className="flex justify-between gap-2 text-xs">
         <div className="min-w-0">
-          <p className="font-medium text-white">Загрузка</p>
+          <p className="font-medium text-white">Загрузка{modStep}</p>
           <p className="truncate text-gray-500">{progress.modName}</p>
         </div>
         <span className="text-xl font-bold tabular-nums text-brand">{clamped.toFixed(0)}%</span>
