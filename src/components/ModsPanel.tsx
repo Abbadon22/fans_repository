@@ -54,7 +54,7 @@ export function ModsPanel({
             </div>
             <p className="text-sm text-gray-400">Манифест пуст</p>
             <p className="max-w-xs text-[11px] text-gray-600">
-              Добавьте zip в Mods/ и выполните npm run manifest:sync
+              Загрузите zip на сервер в Mods/ и обновите manifest.json
             </p>
           </div>
         ) : (

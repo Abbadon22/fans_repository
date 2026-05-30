@@ -96,6 +96,10 @@ pub async fn get_config(
             ),
         );
     }
+    if config.fix_legacy_manifest_url() {
+        config.save()?;
+        emit_log(&app, "URL манифеста обновлён на сервер Fans");
+    }
     Ok(config.clone())
 }
 

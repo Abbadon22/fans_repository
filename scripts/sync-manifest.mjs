@@ -1,12 +1,13 @@
 /**
- * Сканирует Mods/*.zip → SHA256 + папки модов внутри архива → manifest.json
+ * Сканирует Mods/*.zip → SHA256 + папки модов → manifest.json
+ * URL модов и манифеста — на игровом сервере (по умолчанию).
  *
  * Usage: npm run manifest:sync
- *        npm run manifest:sync -- --repo Abbadon22/fans_repository --branch main
+ *        npm run manifest:sync -- --server epyc2.worldhosts.fun --web-port 22499
  */
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { createReadStream, existsSync, readdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
 
@@ -19,14 +20,10 @@ function arg(name, fallback) {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 }
 
-const repo = arg("--repo", "Abbadon22/fans_repository");
-const branch = arg("--branch", "main");
-const releaseTag = arg("--release-tag", "mods");
-const urlBase = `https://raw.githubusercontent.com/${repo}/${branch}/Mods`;
-const releaseUrlBase = `https://github.com/${repo}/releases/download/${releaseTag}`;
-
-/** GitHub блокирует файлы >100 MB в git; raw не подходит для LFS. */
-const LARGE_FILE_BYTES = 95 * 1024 * 1024;
+const serverHost = arg("--server", "epyc2.worldhosts.fun");
+const webPort = arg("--web-port", "22499");
+const urlBase = `http://${serverHost}:${webPort}/Mods`;
+const manifestServerUrl = `http://${serverHost}:${webPort}/manifest.json`;
 
 const SKIP_ROOTS = new Set(["__MACOSX", ".DS_Store", "Thumbs.db"]);
 
@@ -40,7 +37,6 @@ function sha256File(path) {
   });
 }
 
-/** Верхнеуровневые папки модов в zip (по ModInfo.xml или по структуре). */
 function detectModFolders(zip) {
   const entries = zip.getEntries();
   const roots = new Set();
@@ -49,20 +45,19 @@ function detectModFolders(zip) {
     const normalized = entry.entryName.replace(/\\/g, "/");
     const parts = normalized.split("/").filter(Boolean);
     if (parts.length === 0) continue;
-    const root = parts[0];
-    if (SKIP_ROOTS.has(root) || root.startsWith(".")) continue;
-    roots.add(root);
+    const rootName = parts[0];
+    if (SKIP_ROOTS.has(rootName) || rootName.startsWith(".")) continue;
+    roots.add(rootName);
   }
 
-  const withModInfo = [...roots].filter((root) =>
+  const withModInfo = [...roots].filter((rootName) =>
     entries.some((e) => {
       const p = e.entryName.replace(/\\/g, "/");
-      return p.startsWith(`${root}/`) && p.endsWith("ModInfo.xml");
+      return p.startsWith(`${rootName}/`) && p.endsWith("ModInfo.xml");
     }),
   );
 
-  const names = (withModInfo.length > 0 ? withModInfo : [...roots]).sort();
-  return names;
+  return (withModInfo.length > 0 ? withModInfo : [...roots]).sort();
 }
 
 function displayName(archive, names) {
@@ -81,16 +76,10 @@ async function main() {
     .filter((f) => f.toLowerCase().endsWith(".zip"))
     .sort((a, b) => a.localeCompare(b, "ru"));
 
-  if (zips.length === 0) {
-    console.warn("В Mods/ нет .zip файлов.");
-  }
-
   const manifest = [];
 
   for (const archive of zips) {
     const zipPath = join(modsDir, archive);
-    const size = statSync(zipPath).size;
-    const sizeMb = (size / 1024 / 1024).toFixed(1);
     const sha256 = await sha256File(zipPath);
     const zip = new AdmZip(zipPath);
     const names = detectModFolders(zip);
@@ -100,38 +89,31 @@ async function main() {
       continue;
     }
 
-    const useRelease = size > LARGE_FILE_BYTES;
-    const url = useRelease
-      ? `${releaseUrlBase}/${encodeURIComponent(archive)}`
-      : `${urlBase}/${encodeURIComponent(archive)}`;
+    const url = `${urlBase}/${encodeURIComponent(archive)}`;
 
-    const entry = {
+    manifest.push({
       archive,
       name: displayName(archive, names),
       names,
       url,
       sha256,
-    };
+    });
 
-    manifest.push(entry);
-    console.log(`✓ ${archive} (${sizeMb} MB)`);
-    if (useRelease) {
-      console.warn(`  ⚠ слишком большой для git → загрузите в Release «${releaseTag}»`);
-    }
+    console.log(`✓ ${archive}`);
     console.log(`  url:    ${url}`);
     console.log(`  sha256: ${sha256}`);
     console.log(`  mods:   ${names.join(", ")}`);
   }
 
   const json = `${JSON.stringify(manifest, null, 2)}\n`;
-  const targets = [join(root, "manifest.json"), join(root, "public", "manifest.json")];
-
-  for (const path of targets) {
+  for (const path of [join(root, "manifest.json"), join(root, "public", "manifest.json")]) {
     writeFileSync(path, json, "utf8");
     console.log(`→ ${path}`);
   }
 
-  console.log(`\nГотово: ${manifest.length} записей в manifest.json`);
+  console.log(`\nМанифест на сервере: ${manifestServerUrl}`);
+  console.log(`Загрузите manifest.json и zip в Mods/ на сервере (${urlBase}/).`);
+  console.log(`Готово: ${manifest.length} записей.`);
 }
 
 main().catch((err) => {

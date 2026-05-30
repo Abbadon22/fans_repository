@@ -16,25 +16,29 @@ npm install
 
 ## Настройка перед сборкой
 
-1. **Манифест модов** — в репозитории [Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository): файл `manifest.json` в корне. Лаунчер по умолчанию запрашивает:
-   `https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json`
+1. **Манифест модов** — на игровом сервере `epyc2.worldhosts.fun:22499`. Лаунчер по умолчанию запрашивает:
+   `http://epyc2.worldhosts.fun:22499/manifest.json`
+   Zip-архивы — в `http://epyc2.worldhosts.fun:22499/Mods/`
 2. **`config.json`** — создаётся автоматически при первом запуске рядом с `.exe` лаунчера. Скопируйте `config.example.json` и задайте:
    - `server_ip`, `server_port`, `server_password`
    - `game_dir` — заполнится после выбора папки в UI
 
 ### SHA256 архива
 
-После сборки zip (тот же файл, что заливаете на GitHub / Яндекс):
+После сборки zip (тот же файл, что заливаете на сервер):
 
 ```powershell
 Get-FileHash -Path ".\MyMod.zip" -Algorithm SHA256
 ```
 
-Скопируйте `Hash` в `manifest.json` (64 символа, hex). Подробнее: `docs/MANIFEST_SERVER.ru.md` (GitHub, Releases, raw).
+Скопируйте `Hash` в `manifest.json` (64 символа, hex). Подробнее: `docs/MANIFEST_SERVER.ru.md`.
 
-### GitHub
+### Сервер модов
 
-В поле `url` мода — прямая ссылка на zip (**Releases** или **raw.githubusercontent.com**), не страница `github.com/.../blob/...`.
+В поле `url` мода — прямая ссылка на zip на сервере, например:
+`http://epyc2.worldhosts.fun:22499/Mods/MyMod.zip`
+
+После `npm run manifest:sync` загрузите `manifest.json` и zip в `Mods/` на сервере.
 
 ### Яндекс.Диск
 

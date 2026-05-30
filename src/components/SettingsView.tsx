@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { LauncherConfig } from "../types";
-import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT } from "../constants";
+import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT, FAN_WEB_PORT } from "../constants";
 import { FolderSelector } from "./FolderSelector";
 import { ViewHeader } from "./ViewHeader";
 
@@ -109,6 +109,9 @@ export function SettingsView({
 
         <section className="panel space-y-3 p-4">
           <p className="panel-title">Манифест модов</p>
+        <p className="text-[11px] text-gray-500">
+          Лаунчер загружает список и zip с игрового сервера (порт {FAN_WEB_PORT}).
+        </p>
           <p className="break-all text-[10px] text-gray-600">{FAN_MANIFEST_URL}</p>
           <button
             type="button"

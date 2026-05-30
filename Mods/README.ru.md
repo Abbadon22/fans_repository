@@ -1,25 +1,37 @@
-# Mods — zip-архивы модов
+# Mods — zip-архивы для сервера
 
-## Добавление мода
+Лаунчер **скачивает моды с игрового сервера**, не с GitHub.
 
-1. Положите `.zip` в эту папку.
-2. В корне проекта: `npm run manifest:sync`
-3. Закоммитьте `manifest.json` и zip (если ≤95 MB).
+## На сервере (продакшен)
 
-## Большие файлы (>95 MB)
+Разместите на `epyc2.worldhosts.fun` (порт веб-панели **22499**):
 
-GitHub **не принимает** файлы больше 100 MB в репозиторий.
+| Путь на сервере | Файл |
+|----------------|------|
+| `/manifest.json` | список модов (JSON) |
+| `/Mods/*.zip` | архивы модов |
 
-Пример: `BdubsVehicles.zip` (~339 MB) — в `.gitignore`, URL в манифесте ведёт на **Release**:
+Пример URL для игроков:
+- Манифест: `http://epyc2.worldhosts.fun:22499/manifest.json`
+- Мод: `http://epyc2.worldhosts.fun:22499/Mods/WraithsBackpacks-V2.7.zip`
 
-`https://github.com/Abbadon22/fans_repository/releases/download/mods/BdubsVehicles.zip`
+## Локально (разработка)
 
-### Загрузка в Release `mods`
+1. Положите `.zip` в эту папку `Mods/`.
+2. В корне проекта:
 
-1. https://github.com/Abbadon22/fans_repository/releases
-2. **Draft a new release** (или отредактируйте существующий)
-3. Tag: `mods` (имя должно совпадать с `--release-tag` в скрипте)
-4. Прикрепите большие zip как assets
-5. **Publish release**
+```powershell
+npm run manifest:sync
+```
 
-Лаунчер скачает по URL из `manifest.json` — редиректы GitHub поддерживаются.
+3. Загрузите на сервер:
+   - `manifest.json` (из корня проекта)
+   - все `Mods/*.zip`
+
+4. Проверка в браузере — должен начаться скачивание zip:
+
+```text
+http://epyc2.worldhosts.fun:22499/Mods/ИмяМода.zip
+```
+
+Папка `Mods/` в git — резервная копия для команды; игрокам нужен только сервер.

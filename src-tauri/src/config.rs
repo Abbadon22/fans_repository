@@ -5,13 +5,27 @@ use std::path::PathBuf;
 /// Официальный сервер Fans (всегда используется вместо localhost в старых config.json).
 pub const FAN_SERVER_IP: &str = "epyc2.worldhosts.fun";
 pub const FAN_SERVER_PORT: u16 = 27681;
+/// HTTP-порт веб-панели / раздачи файлов (manifest, Mods/*.zip).
+pub const FAN_WEB_PORT: u16 = 22499;
 pub const FAN_DEFAULT_PASSWORD: &str = "2281337";
-/// URL манифеста модов на GitHub (raw, корень репозитория).
+
+/// Манифест и моды на игровом сервере.
 pub const FAN_MANIFEST_URL: &str =
-    "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";
+    "http://epyc2.worldhosts.fun:22499/manifest.json";
+
+pub const FAN_MODS_BASE_URL: &str = "http://epyc2.worldhosts.fun:22499/Mods";
 
 fn default_manifest_url() -> String {
     FAN_MANIFEST_URL.to_string()
+}
+
+/// Прямая ссылка на zip мода на сервере.
+pub fn fan_mod_zip_url(archive: &str) -> String {
+    format!(
+        "{}/{}",
+        FAN_MODS_BASE_URL.trim_end_matches('/'),
+        urlencoding::encode(archive)
+    )
 }
 
 /// Конфигурация лаунчера, хранится в config.json рядом с исполняемым файлом.
@@ -62,14 +76,29 @@ impl LauncherConfig {
         Ok(config)
     }
 
-    /// Переключить старый URL манифеста (сервер :22499) на GitHub.
+    /// Переключить GitHub / localhost / старые пути на сервер Fans.
     pub fn fix_legacy_manifest_url(&mut self) -> bool {
-        let legacy = self.manifest_url.contains(":22499/")
-            || self.manifest_url.contains("/launcher/manifest.json")
-            || self.manifest_url.is_empty();
+        let url = self.manifest_url.trim();
+        let lower = url.to_ascii_lowercase();
+        let target = FAN_MANIFEST_URL.to_ascii_lowercase();
+
+        if lower == target {
+            return false;
+        }
+        if lower.contains(&format!(":{FAN_WEB_PORT}/")) && lower.ends_with("manifest.json") {
+            return false;
+        }
+
+        let legacy = url.is_empty()
+            || lower.contains("github.com")
+            || lower.contains("127.0.0.1")
+            || lower.contains("localhost")
+            || lower.contains("/launcher/");
+
         if !legacy {
             return false;
         }
+
         self.manifest_url = default_manifest_url();
         true
     }
