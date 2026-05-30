@@ -21,7 +21,14 @@ npm run manifest:sync -- --hash-from-yandex
 
 4. Закоммитьте `manifest.json` в репозиторий — игрокам пересборка лаунчера не нужна.
 
-## Формат mod-urls.json
+## Если порядок ссылок неизвестен
+
+Сопоставление по SHA256 (скачивает все ссылки с Яндекса):
+
+```powershell
+node scripts/map-yandex-urls.mjs
+npm run manifest:sync
+```
 
 ```json
 {
