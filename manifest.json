@@ -55,6 +55,15 @@
     "sha256": "2126211459684e78097587dace699930246fd3fb592058c57b65f1adb1fda061"
   },
   {
+    "archive": "0-Quartz.zip",
+    "name": "Quartz",
+    "names": [
+      "0-Quartz"
+    ],
+    "url": "https://disk.yandex.ru/d/8tRq5XilmlYHkQ",
+    "sha256": "99e668be1e8f55ad1491f735204d00b584440a836074cf82decacd6e61b5aecd"
+  },
+  {
     "archive": "SMXcore.zip",
     "name": "SMXcore",
     "names": [
