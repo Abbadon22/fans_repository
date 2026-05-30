@@ -56,8 +56,8 @@ jobs:
 
             - Скачайте **Fans Launcher_*_x64-setup.exe** (установщик Windows)
             - Уже установленным копиям обновление придёт автоматически (`latest.json`)
-            - Манифест модов: GitHub (`manifest.json`)
-            - Скачивание zip: Яндекс.Диск (ссылки в манифесте)
+            - Детекция запущенной игры, emerald UI, улучшенная вкладка «Моды»
+            - +2 мода: ProjectZv2.6, SMXcore
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

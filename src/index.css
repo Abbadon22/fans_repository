@@ -7,9 +7,9 @@
     @apply m-0 h-screen overflow-hidden font-display antialiased text-gray-100;
     background-color: #06080b;
     background-image:
-      radial-gradient(ellipse 90% 55% at 15% -15%, rgba(255, 107, 44, 0.14), transparent 58%),
+      radial-gradient(ellipse 90% 55% at 15% -15%, rgba(16, 185, 129, 0.14), transparent 58%),
       radial-gradient(ellipse 50% 45% at 100% 5%, rgba(56, 189, 248, 0.07), transparent 52%),
-      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(255, 107, 44, 0.04), transparent 50%),
+      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(16, 185, 129, 0.04), transparent 50%),
       linear-gradient(180deg, #06080b 0%, #0c1016 45%, #0a0e14 100%);
   }
 
@@ -22,13 +22,12 @@
   }
 
   ::selection {
-    background: rgba(255, 107, 44, 0.35);
+    background: rgba(16, 185, 129, 0.35);
   }
 
-  /* Кастомные полосы прокрутки */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 107, 44, 0.35) rgba(255, 255, 255, 0.04);
+    scrollbar-color: rgba(16, 185, 129, 0.35) rgba(255, 255, 255, 0.04);
   }
 
   *::-webkit-scrollbar {
@@ -45,8 +44,8 @@
   *::-webkit-scrollbar-thumb {
     background: linear-gradient(
       180deg,
-      rgba(255, 107, 44, 0.55) 0%,
-      rgba(255, 107, 44, 0.28) 100%
+      rgba(16, 185, 129, 0.55) 0%,
+      rgba(16, 185, 129, 0.28) 100%
     );
     border-radius: 999px;
     border: 2px solid transparent;
@@ -56,8 +55,8 @@
   *::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(
       180deg,
-      rgba(255, 107, 44, 0.75) 0%,
-      rgba(255, 107, 44, 0.45) 100%
+      rgba(16, 185, 129, 0.75) 0%,
+      rgba(16, 185, 129, 0.45) 100%
     );
     background-clip: padding-box;
   }
@@ -73,20 +72,24 @@
   }
 
   .panel-title {
-    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-gray-500;
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500;
   }
 
   .btn-soft {
-    @apply rounded-lg border border-line bg-panel-raised/70 px-3 py-2 text-xs font-medium text-gray-300 transition duration-150 hover:border-line-strong hover:bg-panel-hover hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply rounded-lg border border-line bg-panel-raised/70 px-3 py-2 text-sm font-medium text-gray-300 transition duration-150 hover:border-line-strong hover:bg-panel-hover hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .btn-play {
-    @apply relative overflow-hidden rounded-xl bg-gradient-to-b from-brand to-brand-dim py-3.5 text-center text-sm font-bold tracking-wide text-white shadow-play transition duration-150 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-800 disabled:shadow-none;
+    @apply relative overflow-hidden rounded-xl bg-gradient-to-b from-brand to-brand-dim py-3.5 text-center text-base font-bold tracking-wide text-white shadow-play transition duration-150 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-800 disabled:text-gray-400 disabled:shadow-none;
   }
 
   .btn-play::after {
     content: "";
     @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent;
+  }
+
+  .btn-play-running {
+    @apply btn-play disabled:from-emerald-900/40 disabled:to-emerald-950/60 disabled:text-emerald-300/90;
   }
 
   .input-field {
@@ -98,12 +101,12 @@
   }
 
   .kbd-hint {
-    @apply rounded border border-line bg-void/80 px-1.5 py-0.5 font-mono text-[9px] text-gray-500;
+    @apply rounded border border-line bg-void/80 px-1.5 py-0.5 font-mono text-[10px] text-gray-500;
   }
 }
 
 @layer utilities {
   .text-glow-brand {
-    text-shadow: 0 0 24px rgba(255, 107, 44, 0.35);
+    text-shadow: 0 0 24px rgba(16, 185, 129, 0.35);
   }
 }

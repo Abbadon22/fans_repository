@@ -59,6 +59,7 @@ const initialState: LauncherState = {
   manifest: [],
   manifestSource: null,
   modCheck: null,
+  gameRunning: false,
 };
 
 export function useLauncher() {
@@ -181,16 +182,21 @@ export function useLauncher() {
 
   const launchGame = useCallback(async () => {
     try {
+      const running = await invoke<boolean>("is_game_running");
+      if (running) {
+        patch({ gameRunning: true, status: "Игра запущена" });
+        return;
+      }
       setStatus("Запуск игры…");
       const result = await invoke<string>("launch_game");
       appendLog(result);
-      setStatus("Игра запущена");
+      patch({ gameRunning: true, status: "Игра запущена" });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       appendLog(`Запуск не удался: ${msg}`);
       setStatus("Ошибка запуска");
     }
-  }, [appendLog, setStatus]);
+  }, [appendLog, patch, setStatus]);
 
   const installMissingMods = useCallback(async () => {
     if (!state.gameDir) {
@@ -303,6 +309,36 @@ export function useLauncher() {
     },
     [appendLog, patch],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const running = await invoke<boolean>("is_game_running");
+        if (cancelled) return;
+        setState((s) => {
+          if (s.gameRunning === running) return s;
+          const status =
+            running && s.isReady
+              ? "Игра запущена"
+              : !running && s.status === "Игра запущена" && s.isReady
+                ? "Готово к запуску"
+                : s.status;
+          return { ...s, gameRunning: running, status };
+        });
+      } catch {
+        /* ignore */
+      }
+    };
+
+    void poll();
+    const id = window.setInterval(() => void poll(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubs: Array<() => void> = [];

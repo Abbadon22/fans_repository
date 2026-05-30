@@ -107,6 +107,7 @@ export default function App() {
         <AppFooter
           mode={footerMode}
           disabled={!state.isReady}
+          gameRunning={state.gameRunning}
           loading={busy}
           loadingLabel={state.isDownloading ? "Загрузка…" : "Проверка…"}
           showRetry={!state.isReady && !busy && state.gameDir !== null}

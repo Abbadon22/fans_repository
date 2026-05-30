@@ -27,11 +27,11 @@ export function AppHeader({ phase, status, hasFolder, isReady }: AppHeaderProps)
             <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-void bg-mint" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-brand/90">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand/90">
               Fans Group
             </p>
             <h1 className="text-2xl font-bold tracking-tight text-white">7 Days to Die</h1>
-            <p className="mt-1 max-w-md truncate text-sm text-gray-400">{status}</p>
+            <p className="mt-1 max-w-md truncate text-base text-gray-400">{status}</p>
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-3">

@@ -6,6 +6,7 @@ interface AppFooterProps {
   mode: FooterMode;
   disabled: boolean;
   loading: boolean;
+  gameRunning: boolean;
   loadingLabel: string;
   showRetry: boolean;
   showInstall: boolean;
@@ -18,6 +19,7 @@ export function AppFooter({
   mode,
   disabled,
   loading,
+  gameRunning,
   loadingLabel,
   showRetry,
   showInstall,
@@ -44,6 +46,7 @@ export function AppFooter({
           <PlayButton
             disabled={disabled}
             loading={loading}
+            gameRunning={gameRunning}
             loadingLabel={loadingLabel}
             onPlay={onPlay}
             onRetry={mode === "main" ? onRetry : undefined}
@@ -51,8 +54,8 @@ export function AppFooter({
           />
         </div>
       </div>
-      {mode === "main" && !disabled && !loading && (
-        <p className="mt-2 text-center text-[10px] text-gray-600">
+      {mode === "main" && !disabled && !loading && !gameRunning && (
+        <p className="mt-2 text-center text-xs text-gray-600">
           После запуска подключитесь к серверу вручную в игре
         </p>
       )}

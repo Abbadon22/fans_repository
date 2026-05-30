@@ -35,7 +35,7 @@ export function StatusLog({ logs, onClear }: StatusLogProps) {
               key={`${i}-${line.slice(0, 24)}`}
               className={`mb-1 whitespace-pre-wrap break-all border-l-2 pl-2 ${
                 line.includes("Ошибка") || line.includes("⚠")
-                  ? "border-brand text-amber-200/90"
+                  ? "border-brand text-emerald-200/90"
                   : line.includes("Готово") || line.includes("актуальны")
                     ? "border-mint text-gray-300"
                     : "border-transparent text-gray-500"

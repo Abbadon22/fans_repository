@@ -20,6 +20,8 @@ export function ModsPanel({
 }: ModsPanelProps) {
   const items = modStatuses(manifest, modCheck);
   const okCount = items.filter((i) => i.status === "ok").length;
+  const missingCount = items.filter((i) => i.status === "missing").length;
+  const unknownCount = items.length - okCount - missingCount;
 
   return (
     <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden p-0">
@@ -29,13 +31,13 @@ export function ModsPanel({
             <div className="flex items-center gap-2">
               <p className="panel-title">Модпак</p>
               {manifest.length > 0 && (
-                <span className="rounded-md bg-void/80 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-400">
+                <span className="rounded-md bg-void/80 px-2 py-0.5 text-xs font-bold tabular-nums text-gray-300">
                   {okCount}/{manifest.length}
                 </span>
               )}
             </div>
             {manifestSource && (
-              <p className="mt-0.5 truncate text-[10px] text-gray-600" title={manifestSource}>
+              <p className="mt-0.5 truncate text-xs text-gray-500" title={manifestSource}>
                 {manifestSource}
               </p>
             )}
@@ -46,42 +48,64 @@ export function ModsPanel({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+        {manifest.length > 0 && (
+          <div className="grid shrink-0 grid-cols-3 gap-2">
+            <StatCard label="Всего" value={manifest.length} tone="neutral" />
+            <StatCard label="Установлено" value={okCount} tone="ok" />
+            <StatCard
+              label="Нужно обновить"
+              value={missingCount + unknownCount}
+              tone={missingCount > 0 ? "warn" : "neutral"}
+            />
+          </div>
+        )}
+
         {manifest.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 text-lg text-brand">
               ◫
             </div>
-            <p className="text-sm text-gray-400">Манифест пуст</p>
-            <p className="max-w-xs text-[11px] text-gray-600">
-              Ссылки на zip — в scripts/mod-urls.json, затем npm run manifest:sync
+            <p className="text-base text-gray-300">Манифест пуст</p>
+            <p className="max-w-sm text-sm text-gray-500">
+              Обновите список или проверьте manifest.json на GitHub
             </p>
           </div>
-        ) : (
-          <ul className="scroll-area space-y-2 overflow-y-auto pr-1">
-            {items.map((item) => (
+        ) : missingCount > 0 && !busy ? (
+          <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
+            <span className="font-semibold">{missingCount} мод(ов)</span> требуют установки или
+            обновления — нажмите «Установить / обновить моды» внизу.
+          </div>
+        ) : null}
+
+        {manifest.length > 0 && (
+          <ul className="scroll-area min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+            {items.map((item, index) => (
               <li
                 key={item.key}
-                className="group rounded-xl border border-line bg-void/30 px-3 py-2.5 transition hover:border-line-strong hover:bg-void/50"
+                className="group rounded-xl border border-line bg-void/30 px-4 py-3 transition hover:border-line-strong hover:bg-void/50"
                 title={item.detail}
               >
                 <div className="flex items-start gap-3">
+                  <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-gray-600">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                   <StatusDot status={item.status} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-gray-100">{item.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-base font-medium text-gray-100">{item.name}</p>
                       {item.archive && (
-                        <span className="shrink-0 rounded bg-panel-raised px-1.5 py-0.5 font-mono text-[9px] text-gray-500">
+                        <span className="shrink-0 rounded bg-panel-raised px-2 py-0.5 font-mono text-[11px] text-gray-400">
                           {item.archive}
                         </span>
                       )}
                     </div>
                     {item.folders.length > 1 && (
-                      <div className="mt-1.5 flex flex-wrap gap-1">
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         {item.folders.map((folder) => (
                           <span
                             key={folder}
-                            className="rounded-md border border-line bg-panel/60 px-1.5 py-0.5 font-mono text-[9px] text-gray-400"
+                            className="rounded-md border border-line bg-panel/60 px-2 py-0.5 font-mono text-[11px] text-gray-400"
                           >
                             {folder}
                           </span>
@@ -89,7 +113,7 @@ export function ModsPanel({
                       </div>
                     )}
                     {item.detail && (
-                      <p className="mt-1 truncate text-[10px] text-amber-200/70">{item.detail}</p>
+                      <p className="mt-1.5 text-xs text-emerald-200/70">{item.detail}</p>
                     )}
                   </div>
                   <StatusPill status={item.status} />
@@ -103,14 +127,39 @@ export function ModsPanel({
   );
 }
 
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "ok" | "warn" | "neutral";
+}) {
+  const valueCls =
+    tone === "ok"
+      ? "text-mint"
+      : tone === "warn"
+        ? "text-brand"
+        : "text-white";
+  return (
+    <div className="rounded-xl border border-line bg-void/40 px-3 py-2.5 text-center">
+      <p className={`text-xl font-bold tabular-nums ${valueCls}`}>{value}</p>
+      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+    </div>
+  );
+}
+
 function StatusDot({ status }: { status: "ok" | "missing" | "unknown" }) {
   const cls =
     status === "ok"
       ? "bg-mint shadow-[0_0_10px_rgba(52,211,153,0.45)]"
       : status === "missing"
-        ? "bg-brand shadow-[0_0_10px_rgba(255,107,44,0.45)] animate-pulse"
+        ? "bg-brand shadow-[0_0_10px_rgba(16,185,129,0.45)] animate-pulse"
         : "bg-gray-600";
-  return <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${cls}`} aria-hidden />;
+  return <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cls}`} aria-hidden />;
 }
 
 function StatusPill({ status }: { status: "ok" | "missing" | "unknown" }) {
@@ -120,9 +169,12 @@ function StatusPill({ status }: { status: "ok" | "missing" | "unknown" }) {
       : status === "missing"
         ? "bg-brand/10 text-brand ring-brand/20"
         : "bg-panel-raised text-gray-500 ring-line";
-  const label = status === "ok" ? "OK" : status === "missing" ? "Нужен" : "—";
+  const label =
+    status === "ok" ? "Готов" : status === "missing" ? "Нужен" : "Ожидание";
   return (
-    <span className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${cls}`}>
+    <span
+      className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-bold uppercase ring-1 ${cls}`}
+    >
       {label}
     </span>
   );

@@ -46,6 +46,24 @@
     "sha256": "5408799c95c3be9d4fedb30be21f5084e215021c37ab63e8185847fea1cddf62"
   },
   {
+    "archive": "ProjectZv2.6.zip",
+    "name": "Project Z 2.6",
+    "names": [
+      "Project Z 2.6"
+    ],
+    "url": "https://disk.yandex.ru/d/oRstuop_EmDTqQ",
+    "sha256": "2126211459684e78097587dace699930246fd3fb592058c57b65f1adb1fda061"
+  },
+  {
+    "archive": "SMXcore.zip",
+    "name": "SMXcore",
+    "names": [
+      "SMXcore"
+    ],
+    "url": "https://disk.yandex.ru/d/dWoewHHGRSojbQ",
+    "sha256": "db04a8705fe65dffc32b340b2d66acd21cf687e89e9a4288d5c643c930a2af29"
+  },
+  {
     "archive": "Tiger-Jeep.zip",
     "name": "Tiger-Jeep",
     "names": [

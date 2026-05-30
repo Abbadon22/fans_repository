@@ -27,6 +27,7 @@ pub fn run() {
             commands::check_mods,
             commands::download_and_install_mods,
             commands::launch_game,
+            commands::is_game_running,
             commands::get_steam_connect_url,
         ])
         .setup(|_| Ok(()))

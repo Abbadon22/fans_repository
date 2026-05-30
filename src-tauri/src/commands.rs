@@ -166,9 +166,38 @@ pub async fn download_and_install_mods(
     result
 }
 
+/// Запущен ли процесс 7DaysToDie.exe.
+#[tauri::command]
+pub fn is_game_running() -> bool {
+    game_process_running()
+}
+
+fn game_process_running() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        let output = std::process::Command::new("tasklist")
+            .args(["/FI", "IMAGENAME eq 7DaysToDie.exe", "/NH"])
+            .output();
+        match output {
+            Ok(out) => String::from_utf8_lossy(&out.stdout)
+                .to_ascii_lowercase()
+                .contains("7daystodie.exe"),
+            Err(_) => false,
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
+}
+
 /// Запустить 7DaysToDie.exe из папки игры.
 #[tauri::command]
 pub async fn launch_game(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
+    if game_process_running() {
+        return Err("Игра уже запущена".to_string());
+    }
+
     let config = state.config.lock().await.clone();
     let exe = config.validate_game_exe()?;
     let game_dir = exe

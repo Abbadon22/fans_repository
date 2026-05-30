@@ -2,7 +2,7 @@
 export const FAN_SERVER_HOST = "epyc2.worldhosts.fun";
 export const FAN_SERVER_PORT = 27681;
 export const FAN_WEB_PORT = 22499;
-export const APP_VERSION = "1.0.7";
+export const APP_VERSION = "1.0.8";
 
 /** Манифест на GitHub; zip-моды — Яндекс.Диск (url в manifest.json). */
 export const FAN_MANIFEST_URL =

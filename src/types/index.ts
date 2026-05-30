@@ -68,4 +68,5 @@ export interface LauncherState {
   manifest: ModManifestEntry[];
   manifestSource: string | null;
   modCheck: ModCheckResult | null;
+  gameRunning: boolean;
 }

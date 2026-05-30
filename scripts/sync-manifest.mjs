@@ -23,6 +23,15 @@ const GITHUB_MANIFEST =
 
 const SKIP_ROOTS = new Set(["__MACOSX", ".DS_Store", "Thumbs.db"]);
 
+function decodeZipSegment(name) {
+  if (!name.includes("%")) return name;
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}
+
 function sha256File(path) {
   return new Promise((resolve, reject) => {
     const hash = createHash("sha256");
@@ -50,11 +59,16 @@ async function resolveYandex(publicUrl) {
   return href;
 }
 
-async function sha256FromYandex(publicUrl) {
+async function downloadFromYandex(publicUrl) {
   const href = await resolveYandex(publicUrl);
   const res = await fetch(href);
   if (!res.ok) throw new Error(`Скачивание ${res.status} для ${publicUrl}`);
-  return sha256Stream(Readable.fromWeb(res.body));
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function sha256FromYandex(publicUrl) {
+  const bytes = await downloadFromYandex(publicUrl);
+  return createHash("sha256").update(bytes).digest("hex");
 }
 
 function detectModFolders(zip) {
@@ -64,7 +78,7 @@ function detectModFolders(zip) {
     const normalized = entry.entryName.replace(/\\/g, "/");
     const parts = normalized.split("/").filter(Boolean);
     if (parts.length === 0) continue;
-    const rootName = parts[0];
+    const rootName = decodeZipSegment(parts[0]);
     if (SKIP_ROOTS.has(rootName) || rootName.startsWith(".")) continue;
     roots.add(rootName);
   }
@@ -112,14 +126,12 @@ async function main() {
       sha256 = await sha256File(zipPath);
       names = detectModFolders(new AdmZip(zipPath));
       console.log(`✓ ${archive} [локальный zip]`);
-    } else if (hashFromYandex) {
-      console.log(`… ${archive} [SHA256 с Яндекс.Диска]`);
-      sha256 = await sha256FromYandex(yandexUrl);
-      names = [archive.replace(/\.zip$/i, "")];
-      console.log(`✓ ${archive} [яндекс]`);
     } else {
-      console.warn(`⚠ ${archive}: нет локального zip — запустите с --hash-from-yandex`);
-      continue;
+      console.log(`… ${archive} [скачивание с Яндекс.Диска]`);
+      const bytes = await downloadFromYandex(yandexUrl);
+      sha256 = createHash("sha256").update(bytes).digest("hex");
+      names = detectModFolders(new AdmZip(bytes));
+      console.log(`✓ ${archive} [яндекс]`);
     }
 
     if (names.length === 0) {
