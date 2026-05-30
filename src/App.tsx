@@ -17,6 +17,7 @@ export default function App() {
     openConfigFolder,
     savePassword,
     clearLogs,
+    checkAppUpdate,
   } = useLauncher();
 
   const busy = state.isChecking || state.isDownloading;
@@ -67,6 +68,7 @@ export default function App() {
             onOpenGameFolder={() => void openGameFolder()}
             onOpenConfigFolder={() => void openConfigFolder()}
             onSavePassword={savePassword}
+            onCheckAppUpdate={() => void checkAppUpdate()}
           />
         )}
       </div>

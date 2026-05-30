@@ -12,6 +12,7 @@ interface SettingsViewProps {
   onOpenGameFolder: () => void;
   onOpenConfigFolder: () => void;
   onSavePassword: (password: string) => Promise<void>;
+  onCheckAppUpdate: () => void;
 }
 
 export function SettingsView({
@@ -23,6 +24,7 @@ export function SettingsView({
   onOpenGameFolder,
   onOpenConfigFolder,
   onSavePassword,
+  onCheckAppUpdate,
 }: SettingsViewProps) {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -80,6 +82,17 @@ export function SettingsView({
       </section>
 
       <FolderSelector gameDir={gameDir} disabled={busy} onSelect={onSelectFolder} />
+
+      <section className="panel space-y-3 p-4">
+        <p className="panel-title">Лаунчер</p>
+        <p className="text-[11px] text-gray-500">
+          Автообновление с GitHub Releases (Abbadon22/fans_repository). Работает только у установленной через .exe
+          версии.
+        </p>
+        <button type="button" className="btn-soft" disabled={busy} onClick={onCheckAppUpdate}>
+          Проверить обновления
+        </button>
+      </section>
 
       <section className="panel space-y-3 p-4">
         <p className="panel-title">Файлы</p>

@@ -75,11 +75,12 @@ npm run tauri:build
 
 Готовый установщик: `src-tauri/target/release/bundle/nsis/`.
 
-### Раздача друзьям
+### Раздача друзьям и автообновление
 
-- Соберите `npm run tauri:build` и отправьте **`.exe` установщик**
-- Список модов обновляется через **`manifest.json`** в GitHub — без переустановки лаунчера
-- Инструкция: [docs/GITHUB_RELEASE.ru.md](docs/GITHUB_RELEASE.ru.md)
+- Соберите `npm run tauri:build` и выложите **`.exe` установщик** в GitHub Release
+- Лаунчер сам проверяет обновления с GitHub при запуске
+- Список модов обновляется через **`manifest.json`** — без переустановки лаунчера
+- Подробный гайд: [docs/GITHUB_RELEASE.ru.md](docs/GITHUB_RELEASE.ru.md)
 
 Рядом с собранным `fans-launcher.exe` (или в папке установки) лежит **`config.json`** — редактируйте параметры сервера там же.
 
