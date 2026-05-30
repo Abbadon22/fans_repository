@@ -7,7 +7,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const keyPath = join(root, "src-tauri", "keys", "fans-launcher.key");
 
 if (existsSync(keyPath)) {
-  process.env.TAURI_SIGNING_PRIVATE_KEY = readFileSync(keyPath, "utf8").trim();
+  if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
+    process.env.TAURI_SIGNING_PRIVATE_KEY = readFileSync(keyPath, "utf8").trim();
+  }
   delete process.env.TAURI_SIGNING_PRIVATE_KEY_PATH;
   if (process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD === undefined) {
     process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "";

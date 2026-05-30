@@ -162,6 +162,63 @@ git push origin v1.0.1
 | Ошибка подписи у игроков | pubkey в `tauri.conf.json` не совпадает с ключом CI | синхронизируйте `.pub` и секрет |
 | Обновление не проверяется | запуск не через NSIS | переустановите через setup.exe |
 | `Password:` при сборке | ключ с паролем | Enter или `$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "…"` |
+| **Release пустой** | CI упал или тег не запушен | см. раздел ниже |
+
+---
+
+## Release пустой — что проверить
+
+### 1. Откройте Actions
+
+https://github.com/Abbadon22/fans_repository/actions
+
+Если последний run **красный (failure)** — Release не создастся. Типичная ошибка:
+
+`Command "npm run tauri build" failed` + `no private key` → **не задан секрет** `TAURI_SIGNING_PRIVATE_KEY`.
+
+### 2. Секрет GitHub
+
+Settings → Secrets → Actions → должно быть:
+
+- **Name:** `TAURI_SIGNING_PRIVATE_KEY`
+- **Value:** полное содержимое `fans-launcher.key` (одна длинная строка base64, **не** путь к файлу)
+
+Скопируйте так:
+
+```powershell
+Get-Content -Raw src-tauri\keys\fans-launcher.key | Set-Clipboard
+```
+
+Вставьте в GitHub Secret целиком.
+
+### 3. Тег должен быть на последнем коммите
+
+Если вы сначала создали тег, потом ещё коммитили — CI мог собрать **старый** код или тег не обновился.
+
+Пересоздайте тег на актуальном `main`:
+
+```powershell
+git checkout main
+git pull origin main
+
+git tag -d v1.0.0
+git push origin :refs/tags/v1.0.0
+
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+> Если `git push origin v1.0.0` пишет `Everything up-to-date`, но Release нет — удалите тег на GitHub (команды выше) и запушьте заново.
+
+### 4. Дождитесь зелёного CI (~10–15 мин)
+
+После успеха: https://github.com/Abbadon22/fans_repository/releases
+
+Должны быть `.exe` и `latest.json`.
+
+### 5. Ручной перезапуск (без нового тега)
+
+Actions → **Release Fans Launcher** → **Run workflow** (кнопка справа) — только если тег `v1.0.0` уже есть на GitHub.
 
 ---
 
