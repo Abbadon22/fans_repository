@@ -77,6 +77,9 @@ export default function App() {
           modsBadge={missingModsCount > 0 ? missingModsCount : undefined}
           isReady={state.isReady}
           pendingInstall={pendingInstall}
+          logs={state.logs}
+          onClearLogs={clearLogs}
+          onExportLogs={() => void exportLogs()}
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -98,9 +101,6 @@ export default function App() {
             showProgress={showProgress || showCheckingBar}
             showCheckingBar={showCheckingBar}
             downloadProgress={state.downloadProgress}
-            logs={state.logs}
-            onClearLogs={clearLogs}
-            onExportLogs={() => void exportLogs()}
             onGoToMods={() => setView("mods")}
             onSelectFolder={() => void selectFolder()}
           />

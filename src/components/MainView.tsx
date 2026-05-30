@@ -2,7 +2,6 @@ import { AlertBanner } from "./AlertBanner";
 import { MainHero } from "./MainHero";
 import { ProgressBar } from "./ProgressBar";
 import { ServerCard } from "./ServerCard";
-import { StatusLog } from "./StatusLog";
 import type { LauncherConfig, LauncherPhase, ModCheckResult } from "../types";
 import type { DownloadProgress } from "../types";
 
@@ -23,9 +22,6 @@ interface MainViewProps {
   showProgress: boolean;
   showCheckingBar: boolean;
   downloadProgress: DownloadProgress | null;
-  logs: string[];
-  onClearLogs: () => void;
-  onExportLogs: () => void;
   onGoToMods: () => void;
   onSelectFolder: () => void;
 }
@@ -47,9 +43,6 @@ export function MainView({
   showProgress,
   showCheckingBar,
   downloadProgress,
-  logs,
-  onClearLogs,
-  onExportLogs,
   onGoToMods,
   onSelectFolder,
 }: MainViewProps) {
@@ -59,7 +52,7 @@ export function MainView({
 
   return (
     <div className="scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="flex flex-col gap-4 px-5 py-5">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-5">
         <MainHero
           phase={phase}
           status={status}
@@ -87,24 +80,13 @@ export function MainView({
           />
         )}
 
-        <div className="grid min-h-[320px] flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:min-h-[360px]">
-          <div className="flex min-h-[280px] flex-col lg:col-span-5 lg:min-h-0">
-            {config ? (
-              <ServerCard config={config} className="min-h-0 flex-1" />
-            ) : (
-              <section className="panel flex flex-1 items-center justify-center p-8 text-sm text-gray-500">
-                Загрузка настроек…
-              </section>
-            )}
-          </div>
-
-          <StatusLog
-            logs={logs}
-            onClear={onClearLogs}
-            onExport={onExportLogs}
-            className="min-h-[280px] lg:col-span-7 lg:min-h-0"
-          />
-        </div>
+        {config ? (
+          <ServerCard config={config} />
+        ) : (
+          <section className="panel flex min-h-[200px] items-center justify-center p-8 text-sm text-gray-500">
+            Загрузка настроек…
+          </section>
+        )}
       </div>
     </div>
   );
