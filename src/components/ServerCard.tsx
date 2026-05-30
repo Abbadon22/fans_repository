@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { LauncherConfig } from "../types";
-import { FAN_SERVER_HOST, FAN_SERVER_PORT } from "../constants";
 
 interface ServerCardProps {
   config: LauncherConfig;
+  compact?: boolean;
   className?: string;
 }
 
-export function ServerCard({ config, className = "" }: ServerCardProps) {
+export function ServerCard({ config, compact = false, className = "" }: ServerCardProps) {
   const [copied, setCopied] = useState<"ip" | "steam" | null>(null);
   const address = `${config.server_ip}:${config.server_port}`;
-  const isOfficial =
-    config.server_ip === FAN_SERVER_HOST && config.server_port === FAN_SERVER_PORT;
 
   const copyAddress = async () => {
     try {
@@ -20,7 +18,7 @@ export function ServerCard({ config, className = "" }: ServerCardProps) {
       setCopied("ip");
       window.setTimeout(() => setCopied(null), 2000);
     } catch {
-      // ignore
+      /* ignore */
     }
   };
 
@@ -31,50 +29,46 @@ export function ServerCard({ config, className = "" }: ServerCardProps) {
       setCopied("steam");
       window.setTimeout(() => setCopied(null), 2000);
     } catch {
-      // ignore
+      /* ignore */
     }
   };
 
-  return (
-    <section className={`panel relative flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
-      <div
-        className="absolute inset-0 bg-gradient-to-br from-brand/12 via-transparent to-sky/5"
-        aria-hidden
-      />
-      <div className="relative flex flex-1 flex-col p-4">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <div>
-            <p className="panel-title">Сервер группы</p>
-            {isOfficial && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-mint">
-                <span className="h-2 w-2 rounded-full bg-mint shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                Официальный хост Fans
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-line-strong bg-void/60 px-4 py-4 backdrop-blur-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Подключение в игре
-          </p>
-          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-white">
+  if (compact) {
+    return (
+      <section className={`panel flex flex-wrap items-center justify-between gap-4 px-5 py-4 ${className}`}>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Сервер</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-white">
             {config.server_ip}
             <span className="text-brand">:{config.server_port}</span>
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-gray-500">
-            Мультиплеер → Подключиться → введите IP и пароль из настроек
-          </p>
         </div>
+        <div className="flex gap-2">
+          <button type="button" className="btn-soft text-xs" onClick={() => void copyAddress()}>
+            {copied === "ip" ? "Скопировано" : "IP"}
+          </button>
+          <button type="button" className="btn-soft text-xs" onClick={() => void copySteamLink()}>
+            {copied === "steam" ? "Скопировано" : "Steam"}
+          </button>
+        </div>
+      </section>
+    );
+  }
 
-        <div className="mt-auto flex gap-2 pt-4">
-          <button type="button" className="btn-soft min-w-0 flex-1" onClick={() => void copyAddress()}>
-            {copied === "ip" ? "✓ IP" : "Копировать IP"}
-          </button>
-          <button type="button" className="btn-soft min-w-0 flex-1" onClick={() => void copySteamLink()}>
-            {copied === "steam" ? "✓ Steam" : "Steam-ссылка"}
-          </button>
-        </div>
+  return (
+    <section className={`panel p-5 ${className}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Сервер</p>
+      <p className="mt-2 font-mono text-2xl font-semibold text-white">
+        {config.server_ip}
+        <span className="text-brand">:{config.server_port}</span>
+      </p>
+      <div className="mt-4 flex gap-2">
+        <button type="button" className="btn-soft flex-1" onClick={() => void copyAddress()}>
+          {copied === "ip" ? "✓ IP" : "Копировать IP"}
+        </button>
+        <button type="button" className="btn-soft flex-1" onClick={() => void copySteamLink()}>
+          {copied === "steam" ? "✓ Steam" : "Steam-ссылка"}
+        </button>
       </div>
     </section>
   );

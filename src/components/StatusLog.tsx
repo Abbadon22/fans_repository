@@ -4,10 +4,17 @@ interface StatusLogProps {
   logs: string[];
   onClear?: () => void;
   onExport?: () => void;
+  embedded?: boolean;
   className?: string;
 }
 
-export function StatusLog({ logs, onClear, onExport, className = "" }: StatusLogProps) {
+export function StatusLog({
+  logs,
+  onClear,
+  onExport,
+  embedded = false,
+  className = "",
+}: StatusLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -15,37 +22,38 @@ export function StatusLog({ logs, onClear, onExport, className = "" }: StatusLog
     if (el) el.scrollTop = el.scrollHeight;
   }, [logs]);
 
-  return (
-    <section className={`panel flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
-      <div className="flex items-center justify-between border-b border-line px-3 py-2">
-        <p className="panel-title">Журнал</p>
-        {onClear && logs.length > 0 && (
-          <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onClear}>
-            Очистить
-          </button>
-        )}
-        {onExport && logs.length > 0 && (
-          <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onExport}>
-            Сохранить
-          </button>
-        )}
-      </div>
+  const body = (
+    <>
+      {(onClear || onExport) && logs.length > 0 && (
+        <div className="flex justify-end gap-2 border-b border-line px-3 py-2">
+          {onExport && (
+            <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onExport}>
+              Сохранить
+            </button>
+          )}
+          {onClear && (
+            <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onClear}>
+              Очистить
+            </button>
+          )}
+        </div>
+      )}
       <div
         ref={scrollRef}
-        className="scroll-area flex-1 overflow-y-auto bg-void/40 p-3 font-mono text-xs leading-relaxed"
+        className={`scroll-area overflow-y-auto font-mono text-xs leading-relaxed ${
+          embedded ? "max-h-48 p-3" : "flex-1 p-3"
+        }`}
       >
         {logs.length === 0 ? (
-          <span className="text-gray-600">// ожидание событий</span>
+          <span className="text-gray-600">Пока пусто</span>
         ) : (
           logs.map((line, i) => (
             <div
               key={`${i}-${line.slice(0, 24)}`}
-              className={`mb-1 whitespace-pre-wrap break-all border-l-2 pl-2 ${
+              className={`mb-1 whitespace-pre-wrap break-all ${
                 line.includes("Ошибка") || line.includes("⚠")
-                  ? "border-brand text-emerald-200/90"
-                  : line.includes("Готово") || line.includes("актуальны")
-                    ? "border-mint text-gray-300"
-                    : "border-transparent text-gray-500"
+                  ? "text-brand/90"
+                  : "text-gray-500"
               }`}
             >
               {line}
@@ -53,6 +61,14 @@ export function StatusLog({ logs, onClear, onExport, className = "" }: StatusLog
           ))
         )}
       </div>
+    </>
+  );
+
+  if (embedded) return <div className={className}>{body}</div>;
+
+  return (
+    <section className={`panel flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
+      {body}
     </section>
   );
 }

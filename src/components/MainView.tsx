@@ -1,22 +1,17 @@
-import { AlertBanner } from "./AlertBanner";
-import { AppHeader, type HeaderStat } from "./AppHeader";
+import { useState } from "react";
+import { ContentHeader } from "./ContentHeader";
 import { ProgressBar } from "./ProgressBar";
 import { ServerCard } from "./ServerCard";
 import { StatusLog } from "./StatusLog";
-import type { LauncherConfig, LauncherPhase, ModCheckResult } from "../types";
+import type { LauncherConfig } from "../types";
 import type { DownloadProgress } from "../types";
 
 interface MainViewProps {
-  phase: LauncherPhase;
   status: string;
   hasFolder: boolean;
   isReady: boolean;
   gameRunning: boolean;
-  manifestCount: number;
-  manifestOkCount: number;
   config: LauncherConfig | null;
-  modCheck: ModCheckResult | null;
-  removedMods: string[];
   pendingInstall: number;
   busy: boolean;
   showProgress: boolean;
@@ -27,19 +22,15 @@ interface MainViewProps {
   onExportLogs: () => void;
   onGoToMods: () => void;
   onSelectFolder: () => void;
+  onRecheckMods?: () => void;
 }
 
 export function MainView({
-  phase,
   status,
   hasFolder,
   isReady,
   gameRunning,
-  manifestCount,
-  manifestOkCount,
   config,
-  modCheck,
-  removedMods,
   pendingInstall,
   busy,
   showProgress,
@@ -50,104 +41,92 @@ export function MainView({
   onExportLogs,
   onGoToMods,
   onSelectFolder,
+  onRecheckMods,
 }: MainViewProps) {
-  const okCount = modCheck?.ok ? manifestCount : manifestOkCount;
-  const needsMods = hasFolder && !isReady && !busy && modCheck && !modCheck.ok;
-  const needsFolder = !hasFolder && !busy;
+  const [logOpen, setLogOpen] = useState(false);
 
-  const stats = [
-    {
-      label: "Игра",
-      value: gameRunning
-        ? "Запущена"
-        : isReady
-          ? "Готова"
-          : busy
-            ? "Подготовка…"
-            : "Не готова",
-      tone: gameRunning ? "active" : isReady ? "ok" : busy ? "neutral" : "warn",
-      onClick: undefined,
-    },
-    {
-      label: "Моды",
-      value: manifestCount > 0 ? `${okCount} / ${manifestCount}` : "—",
-      tone: modCheck?.ok ? "ok" : needsMods ? "warn" : "neutral",
-      onClick: needsMods ? onGoToMods : undefined,
-    },
-    {
-      label: "Папка",
-      value: hasFolder ? "Выбрана" : "Не выбрана",
-      tone: hasFolder ? "ok" : "warn",
-      onClick: !hasFolder ? onSelectFolder : undefined,
-    },
-  ] satisfies readonly HeaderStat[];
+  const needsFolder = !hasFolder && !busy;
+  const needsMods = hasFolder && !isReady && !busy && pendingInstall > 0;
+
+  let headline = "Готово к запуску";
+  let hint = "Нажмите «Играть» в боковой панели — Steam подключит к серверу.";
+  let tone: "ready" | "warn" | "info" = "ready";
+
+  if (gameRunning) {
+    headline = "Игра запущена";
+    hint = "Закройте 7 Days to Die, чтобы снова запустить из лаунчера.";
+    tone = "info";
+  } else if (needsFolder) {
+    headline = "Выберите папку игры";
+    hint = "Укажите каталог Steam, где лежит 7DaysToDie.exe.";
+    tone = "warn";
+  } else if (busy) {
+    headline = status;
+    hint = "Дождитесь окончания операции.";
+    tone = "info";
+  } else if (needsMods) {
+    headline = `Нужно установить ${pendingInstall} мод(ов)`;
+    hint = "Откройте раздел «Моды» и нажмите «Установить».";
+    tone = "warn";
+  } else if (!isReady) {
+    headline = status;
+    hint = "Проверьте раздел «Моды» или запустите проверку снова.";
+    tone = "warn";
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AppHeader
-        phase={phase}
-        status={status}
-        hasFolder={hasFolder}
-        isReady={isReady}
-        gameRunning={gameRunning}
-        stats={stats}
-      />
+      <ContentHeader title="Игра" subtitle={gameRunning ? "Сессия активна" : undefined} />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 py-4">
-        {needsFolder && (
-          <AlertBanner
-            variant="info"
-            title="Добро пожаловать"
-            message="Укажите папку Steam с 7DaysToDie.exe. После проверки установите моды на вкладке «Моды»."
-            actionLabel="Выбрать папку"
-            onAction={onSelectFolder}
-          />
-        )}
-
-        {!needsFolder && needsMods && (
-          <AlertBanner
-            variant="warn"
-            title="Требуется обновление модов"
-            message={
-              pendingInstall > 0
-                ? `К загрузке: ${pendingInstall} мод(ов) — откройте вкладку «Моды» и нажмите «Установить»`
-                : `${modCheck?.missing.length ?? 0} проблем — см. вкладку «Моды»`
-            }
-            actionLabel="К модам"
-            onAction={onGoToMods}
-          />
-        )}
-
-        {!needsFolder && removedMods.length > 0 && !busy && (
-          <AlertBanner
-            variant="info"
-            title="Очистка модпака"
-            message={`Удалены папки, которых нет в манифесте: ${removedMods.join(", ")}`}
-          />
-        )}
-
-        {!needsFolder && !needsMods && gameRunning && (
-          <AlertBanner
-            variant="info"
-            title="Игра запущена"
-            message="Закройте 7 Days to Die, чтобы снова нажать «Играть» в лаунчере"
-          />
-        )}
+      <div className="scroll-area flex min-h-0 flex-1 flex-col gap-5 px-8 py-6">
+        <section className={`hero-card hero-card--${tone}`}>
+          <h2 className="text-lg font-semibold text-white">{headline}</h2>
+          <p className="mt-2 max-w-lg text-sm leading-relaxed text-gray-400">{hint}</p>
+          {needsFolder && (
+            <button type="button" className="btn-soft mt-4" onClick={onSelectFolder}>
+              Выбрать папку…
+            </button>
+          )}
+          {needsMods && (
+            <button type="button" className="btn-soft mt-4 border-brand/30 text-brand" onClick={onGoToMods}>
+              Перейти к модам
+            </button>
+          )}
+          {!needsFolder && !needsMods && !isReady && !busy && onRecheckMods && (
+            <button type="button" className="btn-soft mt-4" onClick={onRecheckMods}>
+              Проверить моды
+            </button>
+          )}
+        </section>
 
         {(showProgress || showCheckingBar) && (
           <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
         )}
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
-          {config ? (
-            <ServerCard config={config} className="min-h-[280px] lg:min-h-0" />
-          ) : (
-            <section className="panel flex min-h-[200px] items-center justify-center p-6 text-sm text-gray-500">
-              Загрузка…
-            </section>
+        {config && hasFolder && (
+          <ServerCard config={config} compact />
+        )}
+
+        <section className="panel overflow-hidden">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-gray-400 transition hover:bg-white/[0.02] hover:text-gray-200"
+            onClick={() => setLogOpen((v) => !v)}
+          >
+            <span>Журнал событий</span>
+            <span className="text-xs text-gray-600">{logOpen ? "Скрыть" : "Показать"}</span>
+          </button>
+          {logOpen && (
+            <div className="border-t border-line">
+              <StatusLog
+                logs={logs}
+                onClear={onClearLogs}
+                onExport={onExportLogs}
+                embedded
+              />
+            </div>
           )}
-          <StatusLog logs={logs} onClear={onClearLogs} onExport={onExportLogs} className="min-h-[280px] lg:min-h-0" />
-        </div>
+        </section>
       </div>
     </div>
   );

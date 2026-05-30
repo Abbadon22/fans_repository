@@ -3,195 +3,65 @@ import { modStatuses } from "../utils/mods";
 
 interface ModsPanelProps {
   manifest: ModManifestEntry[];
-  manifestSource: string | null;
   modCheck: ModCheckResult | null;
-  pendingInstall: number;
   busy: boolean;
-  onRefresh: () => void;
-  hideHeader?: boolean;
 }
 
-export function ModsPanel({
-  manifest,
-  manifestSource,
-  modCheck,
-  pendingInstall,
-  busy,
-  onRefresh,
-  hideHeader = false,
-}: ModsPanelProps) {
+export function ModsPanel({ manifest, modCheck, busy }: ModsPanelProps) {
   const items = modStatuses(manifest, modCheck);
-  const okCount = items.filter((i) => i.status === "ok").length;
-  const missingCount = items.filter((i) => i.status === "missing").length;
-  const unknownCount = items.length - okCount - missingCount;
-  const removed = modCheck?.removed ?? [];
-  const upToDate = Math.max(0, manifest.length - pendingInstall - missingCount);
 
-  return (
-    <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-      {!hideHeader && (
-        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="panel-title">Модпак</p>
-              {manifest.length > 0 && (
-                <span className="rounded-md bg-void/80 px-2 py-0.5 text-xs font-bold tabular-nums text-gray-300">
-                  {okCount}/{manifest.length}
-                </span>
-              )}
-            </div>
-            {manifestSource && (
-              <p className="mt-0.5 truncate text-xs text-gray-500" title={manifestSource}>
-                {manifestSource}
-              </p>
-            )}
-          </div>
-          <button type="button" className="btn-soft shrink-0" disabled={busy} onClick={onRefresh}>
-            {busy ? "…" : "Обновить"}
-          </button>
-        </div>
-      )}
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-        {manifest.length > 0 && (
-          <div className="grid shrink-0 grid-cols-3 gap-2">
-            <StatCard label="Всего" value={manifest.length} tone="neutral" />
-            <StatCard label="Актуально" value={okCount} tone="ok" />
-            <StatCard
-              label="К загрузке"
-              value={pendingInstall > 0 ? pendingInstall : missingCount + unknownCount}
-              tone={pendingInstall > 0 || missingCount > 0 ? "warn" : "neutral"}
-            />
-          </div>
-        )}
-
-        {removed.length > 0 && !busy && (
-          <div className="shrink-0 rounded-xl border border-line-strong bg-void/50 px-4 py-3 text-sm text-gray-300">
-            <p className="font-semibold text-gray-200">Удалено с диска (нет в манифесте)</p>
-            <p className="mt-1 text-xs text-gray-500">{removed.join(", ")}</p>
-          </div>
-        )}
-
-        {manifest.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 text-lg text-brand">
-              ◫
-            </div>
-            <p className="text-base text-gray-300">Манифест пуст</p>
-            <p className="max-w-sm text-sm text-gray-500">
-              Обновите список или проверьте manifest.json на GitHub
-            </p>
-          </div>
-        ) : pendingInstall > 0 && !busy ? (
-          <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
-            <span className="font-semibold">{pendingInstall} мод(ов)</span> будут скачаны — остальные{" "}
-            {upToDate > 0 ? `(${upToDate} актуальны)` : ""} пропущены. Нажмите «Установить» внизу.
-          </div>
-        ) : missingCount > 0 && !busy ? (
-          <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
-            <span className="font-semibold">{missingCount} мод(ов)</span> требуют установки или
-            обновления — нажмите «Установить» внизу.
-          </div>
-        ) : null}
-
-        {manifest.length > 0 && (
-          <ul className="scroll-area min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {items.map((item, index) => (
-              <li
-                key={item.key}
-                className="group rounded-xl border border-line bg-void/30 px-4 py-3 transition hover:border-line-strong hover:bg-void/50"
-                title={item.detail}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-gray-600">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <StatusDot status={item.status} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-base font-medium text-gray-100">{item.name}</p>
-                      {item.archive && (
-                        <span className="shrink-0 rounded bg-panel-raised px-2 py-0.5 font-mono text-[11px] text-gray-400">
-                          {item.archive}
-                        </span>
-                      )}
-                    </div>
-                    {item.folders.length > 1 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {item.folders.map((folder) => (
-                          <span
-                            key={folder}
-                            className="rounded-md border border-line bg-panel/60 px-2 py-0.5 font-mono text-[11px] text-gray-400"
-                          >
-                            {folder}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {item.detail && (
-                      <p className="mt-1.5 text-xs text-emerald-200/70">{item.detail}</p>
-                    )}
-                  </div>
-                  <StatusPill status={item.status} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+  if (manifest.length === 0) {
+    return (
+      <div className="panel flex flex-1 flex-col items-center justify-center gap-2 p-12 text-center">
+        <p className="text-gray-400">Манифест пуст</p>
+        <p className="text-sm text-gray-600">Нажмите «Проверить»</p>
       </div>
-    </section>
-  );
-}
+    );
+  }
 
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "ok" | "warn" | "neutral";
-}) {
-  const valueCls =
-    tone === "ok"
-      ? "text-mint"
-      : tone === "warn"
-        ? "text-brand"
-        : "text-white";
   return (
-    <div className="rounded-xl border border-line bg-void/40 px-3 py-2.5 text-center">
-      <p className={`text-xl font-bold tabular-nums ${valueCls}`}>{value}</p>
-      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-    </div>
+    <ul className="scroll-area panel min-h-0 flex-1 divide-y divide-line overflow-y-auto p-1">
+      {items.map((item) => (
+        <li
+          key={item.key}
+          className="flex items-center gap-3 rounded-lg px-4 py-3 transition hover:bg-white/[0.02]"
+          title={item.detail}
+        >
+          <StatusDot status={item.status} />
+          <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-100">{item.name}</p>
+          <StatusLabel status={item.status} busy={busy} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
 function StatusDot({ status }: { status: "ok" | "missing" | "unknown" }) {
   const cls =
     status === "ok"
-      ? "bg-mint shadow-[0_0_10px_rgba(52,211,153,0.45)]"
+      ? "bg-mint"
       : status === "missing"
-        ? "bg-brand shadow-[0_0_10px_rgba(16,185,129,0.45)] animate-pulse"
+        ? "bg-brand animate-pulse"
         : "bg-gray-600";
-  return <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cls}`} aria-hidden />;
+  return <span className={`h-2 w-2 shrink-0 rounded-full ${cls}`} aria-hidden />;
 }
 
-function StatusPill({ status }: { status: "ok" | "missing" | "unknown" }) {
+function StatusLabel({
+  status,
+  busy,
+}: {
+  status: "ok" | "missing" | "unknown";
+  busy: boolean;
+}) {
+  if (busy && status === "unknown") {
+    return <span className="text-xs text-gray-600">…</span>;
+  }
+  const label = status === "ok" ? "OK" : status === "missing" ? "Нужен" : "—";
   const cls =
     status === "ok"
-      ? "bg-mint/10 text-mint ring-mint/20"
+      ? "text-mint"
       : status === "missing"
-        ? "bg-brand/10 text-brand ring-brand/20"
-        : "bg-panel-raised text-gray-500 ring-line";
-  const label =
-    status === "ok" ? "Готов" : status === "missing" ? "Нужен" : "Ожидание";
-  return (
-    <span
-      className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-bold uppercase ring-1 ${cls}`}
-    >
-      {label}
-    </span>
-  );
+        ? "text-brand"
+        : "text-gray-600";
+  return <span className={`shrink-0 text-xs font-semibold uppercase ${cls}`}>{label}</span>;
 }
