@@ -1,5 +1,5 @@
 import { AlertBanner } from "./AlertBanner";
-import { AppHeader, type HeaderStat } from "./AppHeader";
+import { MainHero } from "./MainHero";
 import { ProgressBar } from "./ProgressBar";
 import { ServerCard } from "./ServerCard";
 import { StatusLog } from "./StatusLog";
@@ -12,6 +12,7 @@ interface MainViewProps {
   hasFolder: boolean;
   isReady: boolean;
   gameRunning: boolean;
+  gameDir: string | null;
   manifestCount: number;
   manifestOkCount: number;
   config: LauncherConfig | null;
@@ -35,6 +36,7 @@ export function MainView({
   hasFolder,
   isReady,
   gameRunning,
+  gameDir,
   manifestCount,
   manifestOkCount,
   config,
@@ -52,101 +54,56 @@ export function MainView({
   onSelectFolder,
 }: MainViewProps) {
   const okCount = modCheck?.ok ? manifestCount : manifestOkCount;
-  const needsMods = hasFolder && !isReady && !busy && modCheck && !modCheck.ok;
-  const needsFolder = !hasFolder && !busy;
-
-  const stats = [
-    {
-      label: "Игра",
-      value: gameRunning
-        ? "Запущена"
-        : isReady
-          ? "Готова"
-          : busy
-            ? "Подготовка…"
-            : "Не готова",
-      tone: gameRunning ? "active" : isReady ? "ok" : busy ? "neutral" : "warn",
-      onClick: undefined,
-    },
-    {
-      label: "Моды",
-      value: manifestCount > 0 ? `${okCount} / ${manifestCount}` : "—",
-      tone: modCheck?.ok ? "ok" : needsMods ? "warn" : "neutral",
-      onClick: needsMods ? onGoToMods : undefined,
-    },
-    {
-      label: "Папка",
-      value: hasFolder ? "Выбрана" : "Не выбрана",
-      tone: hasFolder ? "ok" : "warn",
-      onClick: !hasFolder ? onSelectFolder : undefined,
-    },
-  ] satisfies readonly HeaderStat[];
+  const showRemovedBanner =
+    hasFolder && removedMods.length > 0 && !busy && isReady && pendingInstall === 0;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <AppHeader
-        phase={phase}
-        status={status}
-        hasFolder={hasFolder}
-        isReady={isReady}
-        gameRunning={gameRunning}
-        stats={stats}
-      />
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 py-4">
-        {needsFolder && (
-          <AlertBanner
-            variant="info"
-            title="Добро пожаловать"
-            message="Укажите папку Steam с 7DaysToDie.exe. После проверки установите моды на вкладке «Моды»."
-            actionLabel="Выбрать папку"
-            onAction={onSelectFolder}
-          />
-        )}
-
-        {!needsFolder && needsMods && (
-          <AlertBanner
-            variant="warn"
-            title="Требуется обновление модов"
-            message={
-              pendingInstall > 0
-                ? `К загрузке: ${pendingInstall} мод(ов) — откройте вкладку «Моды» и нажмите «Установить»`
-                : `${modCheck?.missing.length ?? 0} проблем — см. вкладку «Моды»`
-            }
-            actionLabel="К модам"
-            onAction={onGoToMods}
-          />
-        )}
-
-        {!needsFolder && removedMods.length > 0 && !busy && (
-          <AlertBanner
-            variant="info"
-            title="Очистка модпака"
-            message={`Удалены папки, которых нет в манифесте: ${removedMods.join(", ")}`}
-          />
-        )}
-
-        {!needsFolder && !needsMods && gameRunning && (
-          <AlertBanner
-            variant="info"
-            title="Игра запущена"
-            message="Закройте 7 Days to Die, чтобы снова нажать «Играть» в лаунчере"
-          />
-        )}
+    <div className="scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-col gap-4 px-5 py-5">
+        <MainHero
+          phase={phase}
+          status={status}
+          hasFolder={hasFolder}
+          isReady={isReady}
+          gameRunning={gameRunning}
+          busy={busy}
+          manifestCount={manifestCount}
+          modOkCount={okCount}
+          pendingInstall={pendingInstall}
+          gameDir={gameDir}
+          onSelectFolder={onSelectFolder}
+          onGoToMods={onGoToMods}
+        />
 
         {(showProgress || showCheckingBar) && (
           <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
         )}
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
-          {config ? (
-            <ServerCard config={config} className="min-h-[280px] lg:min-h-0" />
-          ) : (
-            <section className="panel flex min-h-[200px] items-center justify-center p-6 text-sm text-gray-500">
-              Загрузка…
-            </section>
-          )}
-          <StatusLog logs={logs} onClear={onClearLogs} onExport={onExportLogs} className="min-h-[280px] lg:min-h-0" />
+        {showRemovedBanner && (
+          <AlertBanner
+            variant="info"
+            title="Очистка модпака"
+            message={`Удалены папки вне списка сервера: ${removedMods.join(", ")}`}
+          />
+        )}
+
+        <div className="grid min-h-[320px] flex-1 grid-cols-1 gap-4 lg:grid-cols-12 lg:min-h-[360px]">
+          <div className="flex min-h-[280px] flex-col lg:col-span-5 lg:min-h-0">
+            {config ? (
+              <ServerCard config={config} className="min-h-0 flex-1" />
+            ) : (
+              <section className="panel flex flex-1 items-center justify-center p-8 text-sm text-gray-500">
+                Загрузка настроек…
+              </section>
+            )}
+          </div>
+
+          <StatusLog
+            logs={logs}
+            onClear={onClearLogs}
+            onExport={onExportLogs}
+            className="min-h-[280px] lg:col-span-7 lg:min-h-0"
+          />
         </div>
       </div>
     </div>

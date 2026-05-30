@@ -87,6 +87,7 @@ export default function App() {
             hasFolder={state.gameDir !== null}
             isReady={state.isReady}
             gameRunning={state.gameRunning}
+            gameDir={state.gameDir}
             manifestCount={state.manifest.length}
             manifestOkCount={okModsCount}
             config={state.config}

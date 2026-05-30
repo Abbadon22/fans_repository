@@ -14,13 +14,17 @@ export function ServerCard({ config, className = "" }: ServerCardProps) {
   const isOfficial =
     config.server_ip === FAN_SERVER_HOST && config.server_port === FAN_SERVER_PORT;
 
+  const flash = (key: "ip" | "steam") => {
+    setCopied(key);
+    window.setTimeout(() => setCopied(null), 2000);
+  };
+
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(address);
-      setCopied("ip");
-      window.setTimeout(() => setCopied(null), 2000);
+      flash("ip");
     } catch {
-      // ignore
+      /* ignore */
     }
   };
 
@@ -28,69 +32,66 @@ export function ServerCard({ config, className = "" }: ServerCardProps) {
     try {
       const url = await invoke<string>("get_steam_connect_url");
       await navigator.clipboard.writeText(url);
-      setCopied("steam");
-      window.setTimeout(() => setCopied(null), 2000);
+      flash("steam");
     } catch {
-      // ignore
+      /* ignore */
     }
   };
 
   const openSteamConnect = async () => {
     try {
       await invoke("open_steam_connect");
-      setCopied("steam");
-      window.setTimeout(() => setCopied(null), 2000);
+      flash("steam");
     } catch {
-      // ignore
+      /* ignore */
     }
   };
 
   return (
-    <section className={`panel relative flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
+    <section className={`panel relative flex h-full min-h-0 flex-col overflow-hidden p-0 ${className}`}>
       <div
-        className="absolute inset-0 bg-gradient-to-br from-brand/12 via-transparent to-sky/5"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand/8 to-transparent"
         aria-hidden
       />
-      <div className="relative flex flex-1 flex-col p-4">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <div>
-            <p className="panel-title">Сервер группы</p>
-            {isOfficial && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-mint">
-                <span className="h-2 w-2 rounded-full bg-mint shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                Официальный хост Fans
-              </p>
-            )}
-          </div>
+
+      <div className="relative flex h-full flex-col p-4">
+        <div className="mb-3">
+          <p className="panel-title">Сервер Fans</p>
+          {isOfficial && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-mint">
+              <span className="h-1.5 w-1.5 rounded-full bg-mint shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
+              Официальный хост
+            </p>
+          )}
         </div>
 
-        <div className="rounded-xl border border-line-strong bg-void/60 px-4 py-4 backdrop-blur-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Подключение в игре
-          </p>
-          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-white">
+        <div className="rounded-xl border border-line-strong bg-void/70 px-4 py-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">IP:порт</p>
+          <p className="mt-1.5 break-all font-mono text-xl font-semibold leading-tight text-white">
             {config.server_ip}
             <span className="text-brand">:{config.server_port}</span>
           </p>
-          <p className="mt-3 text-sm leading-relaxed text-gray-500">
-            Мультиплеер → Подключиться → введите IP и пароль из настроек
+          <p className="mt-2.5 text-xs leading-relaxed text-gray-500">
+            Пароль — в «Настройки». После «Играть» можно подключиться через Steam.
           </p>
         </div>
 
-        <div className="mt-auto flex flex-col gap-2 pt-4 sm:flex-row">
-          <button type="button" className="btn-soft min-w-0 flex-1" onClick={() => void copyAddress()}>
-            {copied === "ip" ? "✓ IP" : "Копировать IP"}
-          </button>
-          <button type="button" className="btn-soft min-w-0 flex-1" onClick={() => void copySteamLink()}>
-            {copied === "steam" ? "✓ Ссылка" : "Копировать ссылку"}
-          </button>
+        <div className="mt-4 grid flex-1 content-end gap-2">
           <button
             type="button"
-            className="btn-soft min-w-0 flex-1 border-brand/30 bg-brand/10 font-semibold text-brand"
+            className="btn-soft w-full border-brand/35 bg-brand/12 py-2.5 font-semibold text-brand"
             onClick={() => void openSteamConnect()}
           >
-            Подключиться в Steam
+            {copied === "steam" ? "✓ Открыто в Steam" : "Подключиться в Steam"}
           </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="btn-soft py-2 text-xs" onClick={() => void copyAddress()}>
+              {copied === "ip" ? "✓ IP" : "Копировать IP"}
+            </button>
+            <button type="button" className="btn-soft py-2 text-xs" onClick={() => void copySteamLink()}>
+              {copied === "steam" ? "✓ Ссылка" : "Ссылка Steam"}
+            </button>
+          </div>
         </div>
       </div>
     </section>
