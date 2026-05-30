@@ -1,5 +1,5 @@
 import { AlertBanner } from "./AlertBanner";
-import { AppHeader } from "./AppHeader";
+import { AppHeader, type HeaderStat } from "./AppHeader";
 import { ProgressBar } from "./ProgressBar";
 import { ServerCard } from "./ServerCard";
 import { StatusLog } from "./StatusLog";
@@ -60,7 +60,7 @@ export function MainView({
             ? "Подготовка…"
             : "Не готова",
       tone: gameRunning ? "active" : isReady ? "ok" : busy ? "neutral" : "warn",
-      onClick: undefined as (() => void) | undefined,
+      onClick: undefined,
     },
     {
       label: "Моды",
@@ -74,7 +74,7 @@ export function MainView({
       tone: hasFolder ? "ok" : "warn",
       onClick: !hasFolder ? onSelectFolder : undefined,
     },
-  ] as const;
+  ] satisfies readonly HeaderStat[];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

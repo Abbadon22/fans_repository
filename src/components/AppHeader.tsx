@@ -15,7 +15,7 @@ interface AppHeaderProps {
   hasFolder: boolean;
   isReady: boolean;
   gameRunning?: boolean;
-  stats?: HeaderStat[];
+  stats?: readonly HeaderStat[];
 }
 
 export function AppHeader({
