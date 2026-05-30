@@ -3,8 +3,8 @@ use crate::process_util::is_7dtd_running;
 #[cfg(target_os = "windows")]
 use crate::process_util::platform;
 use crate::mods::{
-    check_mods_internal, download_and_install_mods_internal, load_manifest, ManifestLoadResult,
-    ModCheckResult,
+    check_mods_internal, download_and_install_mods_internal, entries_needing_install,
+    load_manifest, remove_mods_not_in_manifest, ManifestLoadResult, ModCheckResult,
 };
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, State};
@@ -124,6 +124,7 @@ pub async fn check_mods(
             loaded.entries.len()
         ),
     );
+    let _ = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
     let result = check_mods_internal(&config, &loaded.entries);
 
     if result.ok {
@@ -148,16 +149,37 @@ pub async fn download_and_install_mods(
     config.validate_game_exe()?;
 
     let loaded = load_manifest(&app, &config).await?;
-    emit_log(
-        &app,
-        &format!(
-            "Манифест: {} — загрузка {} мод(ов)…",
-            loaded.source,
-            loaded.entries.len()
-        ),
-    );
+    let _ = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
+    let to_install = entries_needing_install(&config, &loaded.entries)?;
 
-    let result = download_and_install_mods_internal(app.clone(), config, loaded.entries).await;
+    if to_install.is_empty() {
+        emit_log(&app, "Все моды уже установлены — загрузка не требуется.");
+        let _ = app.emit("progress", 100.0);
+        return Ok("Моды уже актуальны".to_string());
+    }
+
+    let skipped = loaded.entries.len().saturating_sub(to_install.len());
+    if skipped > 0 {
+        emit_log(
+            &app,
+            &format!(
+                "Пропущено {skipped} актуальных мод(ов), загрузка {}…",
+                to_install.len()
+            ),
+        );
+    } else {
+        emit_log(
+            &app,
+            &format!(
+                "Манифест: {} — загрузка {} мод(ов)…",
+                loaded.source,
+                to_install.len()
+            ),
+        );
+    }
+
+    let result =
+        download_and_install_mods_internal(app.clone(), config, to_install).await;
 
     if let Err(ref e) = result {
         emit_log(&app, &format!("Ошибка: {e}"));

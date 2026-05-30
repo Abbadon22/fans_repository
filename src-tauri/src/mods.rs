@@ -2,6 +2,7 @@ use crate::config::LauncherConfig;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -82,6 +83,7 @@ pub struct ModCheckResult {
 
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
 const MANIFEST_FETCH_TIMEOUT_SECS: u64 = 20;
+const MARKER_DIR_NAME: &str = ".launcher-meta";
 
 /// Откуда взят манифест (для UI и логов).
 #[derive(Debug, Clone, Serialize)]
@@ -264,6 +266,89 @@ fn parse_manifest_file(path: &Path) -> Result<Vec<ModManifestEntry>, String> {
     parse_manifest_json(&content)
 }
 
+fn manifest_folder_names(manifest: &[ModManifestEntry]) -> HashSet<String> {
+    manifest
+        .iter()
+        .flat_map(|entry| entry.folder_names())
+        .collect()
+}
+
+fn folder_in_manifest(name: &str, allowed: &HashSet<String>) -> bool {
+    if allowed.contains(name) {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        return allowed
+            .iter()
+            .any(|allowed_name| allowed_name.eq_ignore_ascii_case(name));
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+/// Удалить из Mods/ папки модов, которых нет в манифесте сервера.
+pub fn remove_mods_not_in_manifest(
+    app: &AppHandle,
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+) -> Result<Vec<String>, String> {
+    let mods_dir = config.mods_dir()?;
+    if !mods_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let allowed = manifest_folder_names(manifest);
+    let mut removed = Vec::new();
+
+    for entry in fs::read_dir(&mods_dir).map_err(|e| {
+        format!(
+            "Не удалось прочитать папку Mods ({}): {e}",
+            mods_dir.display()
+        )
+    })? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name == MARKER_DIR_NAME || folder_in_manifest(&name, &allowed) {
+            continue;
+        }
+
+        fs::remove_dir_all(&path).map_err(|e| {
+            format!("Не удалось удалить папку мода «{name}» ({}): {e}", path.display())
+        })?;
+
+        let marker = marker_path(&mods_dir, &name);
+        if marker.is_file() {
+            let _ = fs::remove_file(&marker);
+        }
+
+        emit_log(
+            app,
+            &format!("Удалён мод «{name}» — его нет в манифесте сервера"),
+        );
+        removed.push(name);
+    }
+
+    if !removed.is_empty() {
+        emit_log(
+            app,
+            &format!(
+                "Очистка Mods/: удалено {} посторонних мод(ов)",
+                removed.len()
+            ),
+        );
+    }
+
+    Ok(removed)
+}
+
 /// Проверить наличие модов и соответствие SHA256 маркерным файлам.
 pub fn check_mods_internal(
     config: &LauncherConfig,
@@ -322,7 +407,42 @@ pub fn check_mods_internal(
     }
 }
 
-/// Скачать и установить все моды из манифеста.
+/// Нужна ли переустановка записи манифеста (нет маркера или хеш не совпадает).
+fn entry_needs_install(mods_dir: &Path, entry: &ModManifestEntry) -> bool {
+    let expected = entry.fingerprint();
+    for folder in entry.folder_names() {
+        let marker = marker_path(mods_dir, &folder);
+        if !marker.is_file() {
+            return true;
+        }
+        let stored = fs::read_to_string(&marker)
+            .unwrap_or_default()
+            .trim()
+            .to_lowercase();
+        if stored != expected {
+            return true;
+        }
+    }
+    false
+}
+
+/// Только моды, которых нет или которые устарели.
+pub fn entries_needing_install(
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+) -> Result<Vec<ModManifestEntry>, String> {
+    let mods_dir = config.mods_dir()?;
+    if !mods_dir.is_dir() {
+        return Ok(manifest.to_vec());
+    }
+    Ok(manifest
+        .iter()
+        .filter(|entry| entry_needs_install(&mods_dir, entry))
+        .cloned()
+        .collect())
+}
+
+/// Скачать и установить моды из списка (обычно только отсутствующие).
 pub async fn download_and_install_mods_internal(
     app: AppHandle,
     config: LauncherConfig,
@@ -392,7 +512,11 @@ pub async fn download_and_install_mods_internal(
     }
 
     emit_log(&app, "Все моды установлены успешно.");
-    Ok("Моды установлены".to_string())
+    Ok(if total == 1 {
+        "Мод установлен".to_string()
+    } else {
+        format!("Установлено модов: {total}")
+    })
 }
 
 fn emit_log(app: &AppHandle, message: &str) {
@@ -728,7 +852,7 @@ fn join_safe(base: &Path, relative: &Path) -> Result<PathBuf, String> {
 }
 
 fn marker_dir(mods_dir: &Path) -> PathBuf {
-    mods_dir.join(".launcher-meta")
+    mods_dir.join(MARKER_DIR_NAME)
 }
 
 fn ensure_marker_dir(mods_dir: &Path) -> Result<(), String> {

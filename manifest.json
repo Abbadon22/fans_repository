@@ -28,6 +28,15 @@
     "sha256": "071a49b75c64dc88912223035b1a3d1a3c2aee271b4587ebb6e695e757de2530"
   },
   {
+    "archive": "DismemberRandomizer-1.1.0.zip",
+    "name": "Dismember Randomizer",
+    "names": [
+      "DismemberRandomizer"
+    ],
+    "url": "https://disk.yandex.ru/d/mQVYTehb5ycJdw",
+    "sha256": "d4fb6691aad17ba468f3e82c596a6a11e3a372db74769c48d049bad8a6e81c35"
+  },
+  {
     "archive": "ErionaxFirearmsAdditions.zip",
     "name": "ErionaxFirearmsAdditions",
     "names": [
