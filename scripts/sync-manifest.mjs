@@ -5,7 +5,7 @@
  *        npm run manifest:sync -- --repo Abbadon22/fans_repository --branch main
  */
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, readdirSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import AdmZip from "adm-zip";
@@ -21,7 +21,12 @@ function arg(name, fallback) {
 
 const repo = arg("--repo", "Abbadon22/fans_repository");
 const branch = arg("--branch", "main");
+const releaseTag = arg("--release-tag", "mods");
 const urlBase = `https://raw.githubusercontent.com/${repo}/${branch}/Mods`;
+const releaseUrlBase = `https://github.com/${repo}/releases/download/${releaseTag}`;
+
+/** GitHub блокирует файлы >100 MB в git; raw не подходит для LFS. */
+const LARGE_FILE_BYTES = 95 * 1024 * 1024;
 
 const SKIP_ROOTS = new Set(["__MACOSX", ".DS_Store", "Thumbs.db"]);
 
@@ -84,6 +89,8 @@ async function main() {
 
   for (const archive of zips) {
     const zipPath = join(modsDir, archive);
+    const size = statSync(zipPath).size;
+    const sizeMb = (size / 1024 / 1024).toFixed(1);
     const sha256 = await sha256File(zipPath);
     const zip = new AdmZip(zipPath);
     const names = detectModFolders(zip);
@@ -93,16 +100,25 @@ async function main() {
       continue;
     }
 
+    const useRelease = size > LARGE_FILE_BYTES;
+    const url = useRelease
+      ? `${releaseUrlBase}/${encodeURIComponent(archive)}`
+      : `${urlBase}/${encodeURIComponent(archive)}`;
+
     const entry = {
       archive,
       name: displayName(archive, names),
       names,
-      url: `${urlBase}/${encodeURIComponent(archive)}`,
+      url,
       sha256,
     };
 
     manifest.push(entry);
-    console.log(`✓ ${archive}`);
+    console.log(`✓ ${archive} (${sizeMb} MB)`);
+    if (useRelease) {
+      console.warn(`  ⚠ слишком большой для git → загрузите в Release «${releaseTag}»`);
+    }
+    console.log(`  url:    ${url}`);
     console.log(`  sha256: ${sha256}`);
     console.log(`  mods:   ${names.join(", ")}`);
   }

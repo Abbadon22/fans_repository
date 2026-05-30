@@ -40,3 +40,6 @@ webmap/dist
 Mods/**/*
 !Mods/*.zip
 !Mods/.gitkeep
+!Mods/README.ru.md
+# >100 MB — только через GitHub Release (тег mods), см. Mods/README.ru.md
+Mods/BdubsVehicles.zip
