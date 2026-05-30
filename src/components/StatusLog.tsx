@@ -25,7 +25,7 @@ export function StatusLog({ logs, onClear }: StatusLogProps) {
       </div>
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto bg-void/40 p-3 font-mono text-[11px] leading-relaxed"
+        className="scroll-area flex-1 overflow-y-auto bg-void/40 p-3 font-mono text-[11px] leading-relaxed"
       >
         {logs.length === 0 ? (
           <span className="text-gray-600">// ожидание событий</span>

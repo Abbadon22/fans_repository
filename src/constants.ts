@@ -1,7 +1,7 @@
 /** Официальный сервер Fans (должен совпадать с Rust FAN_SERVER_*). */
 export const FAN_SERVER_HOST = "epyc2.worldhosts.fun";
 export const FAN_SERVER_PORT = 27681;
-export const APP_VERSION = "1.0.1";
+export const APP_VERSION = "1.0.5";
 
 /** Манифест модов на GitHub (raw). */
 export const FAN_MANIFEST_URL =

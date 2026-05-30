@@ -70,6 +70,7 @@ npm run tauri:dev
 ## Сборка релиза
 
 ```bash
+npm run manifest:sync   # после добавления zip в Mods/
 npm run tauri:build
 ```
 

@@ -192,6 +192,50 @@ export function useLauncher() {
     }
   }, [appendLog, setStatus]);
 
+  const installMissingMods = useCallback(async () => {
+    if (!state.gameDir) {
+      appendLog("Сначала выберите папку с игрой");
+      return;
+    }
+    hadError.current = false;
+    patch({
+      isChecking: false,
+      isDownloading: true,
+      isReady: false,
+      downloadProgress: null,
+      status: "Загрузка и установка модов…",
+    });
+    try {
+      appendLog("Загрузка модов из манифеста…");
+      await invoke<string>("download_and_install_mods");
+      const after = await invoke<ModCheckResult>("check_mods");
+      patch({
+        modCheck: after,
+        isDownloading: false,
+        isReady: after.ok,
+        progress: 100,
+        downloadProgress: null,
+        status: after.ok ? "Готово к запуску" : "Ошибка после установки",
+      });
+      if (after.ok) {
+        appendLog("Моды установлены.");
+      } else {
+        hadError.current = true;
+        appendLog("После установки остались проблемы — см. вкладку «Моды»");
+      }
+    } catch (e) {
+      hadError.current = true;
+      const msg = e instanceof Error ? e.message : String(e);
+      appendLog(`Ошибка установки: ${msg}`);
+      patch({
+        isDownloading: false,
+        isReady: false,
+        downloadProgress: null,
+        status: "Ошибка загрузки модов",
+      });
+    }
+  }, [appendLog, patch, state.gameDir]);
+
   const retryMods = useCallback(() => {
     void runModPipeline();
   }, [runModPipeline]);
@@ -339,6 +383,7 @@ export function useLauncher() {
     selectFolder,
     launchGame,
     retryMods,
+    installMissingMods,
     refreshModsCheck,
     openGameFolder,
     openConfigFolder,

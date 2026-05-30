@@ -18,12 +18,18 @@
 ```json
 [
   {
-    "name": "ИмяПапкиМода-",
-    "url": "https://... ссылка на .zip ...",
+    "archive": "MyModPack.zip",
+    "name": "MyModPack (2 mods)",
+    "names": ["ModFolderA", "ModFolderB"],
+    "url": "https://raw.githubusercontent.com/USER/REPO/main/Mods/MyModPack.zip",
     "sha256": "hex-хеш архива"
   }
 ]
 ```
+
+- `archive` — имя zip в `Mods/`
+- `names` — все папки модов внутри архива (лаунчер проверяет каждую)
+- `name` — подпись в UI (генерируется скриптом)
 
 Шаблон для загрузки на сервер: `public/launcher/manifest.json` в репозитории лаунчера.
 

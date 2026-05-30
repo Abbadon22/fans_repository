@@ -62,10 +62,15 @@ export function ServerCard({ config }: ServerCardProps) {
         </div>
 
         <div className="rounded-xl border border-line-strong bg-void/60 px-4 py-3.5 backdrop-blur-sm">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Connect</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Подключение в игре
+          </p>
           <p className="mt-1 font-mono text-lg font-semibold tracking-tight text-white">
             {config.server_ip}
             <span className="text-brand">:{config.server_port}</span>
+          </p>
+          <p className="mt-2 text-[10px] text-gray-600">
+            Мультиплеер → Подключиться → введите IP и пароль из настроек
           </p>
         </div>
       </div>

@@ -7,6 +7,7 @@ interface ModsPanelProps {
   modCheck: ModCheckResult | null;
   busy: boolean;
   onRefresh: () => void;
+  hideHeader?: boolean;
 }
 
 export function ModsPanel({
@@ -15,32 +16,35 @@ export function ModsPanel({
   modCheck,
   busy,
   onRefresh,
+  hideHeader = false,
 }: ModsPanelProps) {
   const items = modStatuses(manifest, modCheck);
   const okCount = items.filter((i) => i.status === "ok").length;
 
   return (
     <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="panel-title">Модпак</p>
-            {manifest.length > 0 && (
-              <span className="rounded-md bg-void/80 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-400">
-                {okCount}/{manifest.length}
-              </span>
+      {!hideHeader && (
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="panel-title">Модпак</p>
+              {manifest.length > 0 && (
+                <span className="rounded-md bg-void/80 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-gray-400">
+                  {okCount}/{manifest.length}
+                </span>
+              )}
+            </div>
+            {manifestSource && (
+              <p className="mt-0.5 truncate text-[10px] text-gray-600" title={manifestSource}>
+                {manifestSource}
+              </p>
             )}
           </div>
-          {manifestSource && (
-            <p className="mt-0.5 truncate text-[10px] text-gray-600" title={manifestSource}>
-              {manifestSource}
-            </p>
-          )}
+          <button type="button" className="btn-soft shrink-0" disabled={busy} onClick={onRefresh}>
+            {busy ? "…" : "Обновить"}
+          </button>
         </div>
-        <button type="button" className="btn-soft shrink-0" disabled={busy} onClick={onRefresh}>
-          {busy ? "…" : "Обновить"}
-        </button>
-      </div>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col p-3">
         {manifest.length === 0 ? (
@@ -54,7 +58,7 @@ export function ModsPanel({
             </p>
           </div>
         ) : (
-          <ul className="space-y-2 overflow-y-auto pr-0.5">
+          <ul className="scroll-area space-y-2 overflow-y-auto pr-1">
             {items.map((item) => (
               <li
                 key={item.key}

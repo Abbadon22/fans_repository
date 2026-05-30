@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { APP_VERSION } from "../constants";
 
-export type AppView = "main" | "settings";
+export type AppView = "main" | "mods" | "settings";
 
 interface CustomTitlebarProps {
   view: AppView;
   onViewChange: (view: AppView) => void;
+  modsBadge?: number;
 }
 
-export function CustomTitlebar({ view, onViewChange }: CustomTitlebarProps) {
+export function CustomTitlebar({ view, onViewChange, modsBadge }: CustomTitlebarProps) {
   const win = getCurrentWindow();
 
   return (
@@ -32,6 +33,9 @@ export function CustomTitlebar({ view, onViewChange }: CustomTitlebarProps) {
       <nav className="flex shrink-0 items-stretch">
         <TabButton active={view === "main"} onClick={() => onViewChange("main")}>
           Главная
+        </TabButton>
+        <TabButton active={view === "mods"} onClick={() => onViewChange("mods")} badge={modsBadge}>
+          Моды
         </TabButton>
         <TabButton active={view === "settings"} onClick={() => onViewChange("settings")}>
           Настройки
@@ -58,17 +62,19 @@ export function CustomTitlebar({ view, onViewChange }: CustomTitlebarProps) {
 function TabButton({
   active,
   onClick,
+  badge,
   children,
 }: {
   active: boolean;
   onClick: () => void;
+  badge?: number;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative border-b-2 px-4 text-xs font-semibold transition ${
+      className={`relative flex items-center gap-1.5 border-b-2 px-4 text-xs font-semibold transition ${
         active
           ? "border-brand text-white"
           : "border-transparent text-gray-500 hover:text-gray-300"
@@ -81,6 +87,11 @@ function TabButton({
         />
       )}
       {children}
+      {badge !== undefined && badge > 0 && (
+        <span className="relative z-10 rounded-full bg-brand px-1.5 py-px text-[9px] font-bold text-white">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
