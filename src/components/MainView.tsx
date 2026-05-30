@@ -97,8 +97,8 @@ export function MainView({
         {needsFolder && (
           <AlertBanner
             variant="info"
-            title="Папка игры не выбрана"
-            message="Укажите каталог с 7DaysToDie.exe"
+            title="Добро пожаловать"
+            message="Укажите папку Steam с 7DaysToDie.exe. После проверки установите моды на вкладке «Моды»."
             actionLabel="Выбрать папку"
             onAction={onSelectFolder}
           />

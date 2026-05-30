@@ -4,6 +4,10 @@ export const FAN_SERVER_PORT = 27681;
 export const FAN_WEB_PORT = 22499;
 export const APP_VERSION = "1.0.12";
 
+/** Страница релизов — единственный способ скачать лаунчер для игроков. */
+export const RELEASES_URL =
+  "https://github.com/Abbadon22/fans_repository/releases/latest";
+
 /** Манифест на GitHub; zip-моды — Яндекс.Диск (url в manifest.json). */
 export const FAN_MANIFEST_URL =
   "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json";

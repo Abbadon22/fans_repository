@@ -4,5 +4,7 @@
   "server_password": "2281337",
   "manifest_url": "https://raw.githubusercontent.com/Abbadon22/fans_repository/main/manifest.json",
   "_comment": "server_ip/port для Fans подставляются автоматически; не используйте 127.0.0.1",
-  "game_dir": null
+  "game_dir": null,
+  "auto_steam_connect": true,
+  "_comment": "Редактируйте config.json рядом с Fans Launcher.exe после установки"
 }

@@ -418,9 +418,7 @@ export function useLauncher() {
 
         if (!config.game_dir) {
           setStatus("Выберите папку с 7DaysToDie.exe");
-          appendLog("Первый запуск — откроется выбор папки с игрой");
-          await new Promise((r) => setTimeout(r, 400));
-          await selectFolder();
+          appendLog("Первый запуск — укажите папку с игрой на главной вкладке");
           return;
         }
 

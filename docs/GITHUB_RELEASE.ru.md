@@ -1,4 +1,7 @@
-# GitHub: автообновление лаунчера и релизы
+# GitHub: релизы и автообновление (для администратора)
+
+> Игрокам: только [Releases](https://github.com/Abbadon22/fans_repository/releases/latest).  
+> Публичный README — [README.md](../README.md).
 
 Репозиторий: [Abbadon22/fans_repository](https://github.com/Abbadon22/fans_repository)
 

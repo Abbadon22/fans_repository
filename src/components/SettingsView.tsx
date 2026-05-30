@@ -1,10 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { LauncherConfig } from "../types";
-import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT, WHATS_NEW } from "../constants";
+import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT, RELEASES_URL, WHATS_NEW } from "../constants";
 import { ViewHeader } from "./ViewHeader";
-
-const RELEASES_URL = "https://github.com/Abbadon22/fans_repository/releases";
 
 interface SettingsViewProps {
   config: LauncherConfig | null;
@@ -137,16 +135,21 @@ export function SettingsView({
           <div className="grid grid-cols-2 items-stretch gap-3">
             <SettingCard title="Обновления" stretch footer={
               <>
+                <button
+                  type="button"
+                  className="btn-soft border-brand/40 bg-brand/15 font-semibold text-brand"
+                  onClick={() => void openUrl(RELEASES_URL)}
+                >
+                  Скачать установщик
+                </button>
                 <button type="button" className="btn-soft" disabled={busy} onClick={onCheckAppUpdate}>
                   Проверить
-                </button>
-                <button type="button" className="btn-soft" onClick={() => void openUrl(RELEASES_URL)}>
-                  Релизы
                 </button>
               </>
             }>
               <p className="text-xs leading-relaxed text-gray-500">
-                Автообновление с GitHub Releases
+                Установленная копия обновляется сама. Новым игрокам — только{" "}
+                <span className="font-mono text-gray-400">*-setup.exe</span> с Releases.
               </p>
             </SettingCard>
 
