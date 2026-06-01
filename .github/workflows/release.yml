@@ -60,6 +60,7 @@ jobs:
             Уже стоит прошлая версия — запустите лаунчер, обновление подтянется само.
 
             ### Что нового в v__VERSION__
+            - Удалён мод CraftFromContainersPlus из manifest.json
             - Обязательные моды TFP в manifest.json (Harmony, CommandExtensions, MapRendering, WebServer) — автоустановка с Яндекс.Диска
             - Защита служебных модов TFP от удаления при очистке Mods/
             - Повторы при лимите Яндекс.Диска (HTTP 429)
