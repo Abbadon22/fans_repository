@@ -61,16 +61,6 @@
     "side": "both"
   },
   {
-    "archive": "CraftFromContainersPlus-AnyCrate-.zip",
-    "name": "CraftFromContainersPlus(AnyCrate)",
-    "names": [
-      "CraftFromContainersPlus(AnyCrate)"
-    ],
-    "url": "https://disk.yandex.ru/d/odpbmKJryvSv9w",
-    "sha256": "071a49b75c64dc88912223035b1a3d1a3c2aee271b4587ebb6e695e757de2530",
-    "side": "both"
-  },
-  {
     "archive": "DismemberRandomizer-1.1.0.zip",
     "name": "Dismember Randomizer",
     "names": [
