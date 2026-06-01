@@ -6,8 +6,8 @@ use crate::process_util::is_7dtd_running;
 use crate::process_util::platform;
 use crate::mods::{
     check_mods_internal, clear_all_manifest_mods, download_and_install_mods_internal,
-    entries_needing_install, load_manifest, remove_manifest_mod, remove_mods_not_in_manifest,
-    ManifestLoadResult, ModCheckResult,
+    entries_needing_install, load_manifest, purge_server_only_mods_from_client,
+    remove_manifest_mod, remove_mods_not_in_manifest, ManifestLoadResult, ModCheckResult,
 };
 use std::path::Path;
 use tauri::{AppHandle, Emitter, State};
@@ -129,9 +129,20 @@ pub async fn check_mods(
             loaded.entries.len()
         ),
     );
-    let removed = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
+    let mut removed = purge_server_only_mods_from_client(&app, &config, &loaded.entries)?;
+    removed.extend(remove_mods_not_in_manifest(&app, &config, &loaded.entries)?);
     let mut result = check_mods_internal(&config, &loaded.entries);
     result.removed = removed;
+
+    if result.skipped_server > 0 {
+        emit_log(
+            &app,
+            &format!(
+                "{} мод(ов) только для dedicated server — на ваш ПК не устанавливаются",
+                result.skipped_server
+            ),
+        );
+    }
 
     if !result.removed.is_empty() {
         emit_log(
@@ -165,16 +176,36 @@ pub async fn download_and_install_mods(
     config.validate_game_exe()?;
 
     let loaded = load_manifest(&app, &config).await?;
+    let _ = purge_server_only_mods_from_client(&app, &config, &loaded.entries)?;
     let _ = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
     let to_install = entries_needing_install(&config, &loaded.entries)?;
+    let server_only = loaded
+        .entries
+        .iter()
+        .filter(|e| !e.requires_client_install())
+        .count();
+
+    if server_only > 0 {
+        emit_log(
+            &app,
+            &format!(
+                "{server_only} мод(ов) только для сервера — пропуск загрузки на клиент"
+            ),
+        );
+    }
 
     if to_install.is_empty() {
-        emit_log(&app, "Все моды уже установлены — загрузка не требуется.");
+        emit_log(&app, "Все нужные моды уже установлены — загрузка не требуется.");
         let _ = app.emit("progress", 100.0);
         return Ok("Моды уже актуальны".to_string());
     }
 
-    let skipped = loaded.entries.len().saturating_sub(to_install.len());
+    let client_total = loaded
+        .entries
+        .iter()
+        .filter(|e| e.requires_client_install())
+        .count();
+    let skipped = client_total.saturating_sub(to_install.len());
     if skipped > 0 {
         emit_log(
             &app,
@@ -224,9 +255,28 @@ pub async fn remove_mod(
     config.game_dir_path()?;
 
     let loaded = load_manifest(&app, &config).await?;
+    let entry = loaded
+        .entries
+        .iter()
+        .find(|e| {
+            let q = mod_name.trim();
+            e.name == q
+                || e.archive.as_deref() == Some(q)
+                || e.folder_names().iter().any(|f| f == q)
+        })
+        .ok_or_else(|| format!("Мод «{mod_name}» не найден в манифесте"))?;
+
+    if !entry.requires_client_install() {
+        return Err(format!(
+            "«{}» — только для сервера, на клиенте не устанавливается",
+            entry.name
+        ));
+    }
+
     remove_manifest_mod(&app, &config, &loaded.entries, mod_name.trim())?;
 
-    let removed = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
+    let mut removed = purge_server_only_mods_from_client(&app, &config, &loaded.entries)?;
+    removed.extend(remove_mods_not_in_manifest(&app, &config, &loaded.entries)?);
     let mut result = check_mods_internal(&config, &loaded.entries);
     result.removed = removed;
 
@@ -260,21 +310,37 @@ pub async fn reinstall_all_mods(
         return Err("Манифест пуст — нечего переустанавливать".to_string());
     }
 
+    let client_entries: Vec<_> = loaded
+        .entries
+        .iter()
+        .filter(|e| e.requires_client_install())
+        .cloned()
+        .collect();
+    if client_entries.is_empty() {
+        return Err("Нет модов для клиента — в манифесте только server-side".to_string());
+    }
+
+    let server_only = loaded.entries.len().saturating_sub(client_entries.len());
     emit_log(
         &app,
         &format!(
-            "Полная переустановка модпака ({} модов)…",
-            loaded.entries.len()
+            "Переустановка {} мод(ов) на клиенте{}…",
+            client_entries.len(),
+            if server_only > 0 {
+                format!(" ({server_only} server-only пропущены)")
+            } else {
+                String::new()
+            }
         ),
     );
 
-    clear_all_manifest_mods(&app, &config, &loaded.entries)?;
+    clear_all_manifest_mods(&app, &config, &client_entries)?;
 
     state.download.reset();
     let result = download_and_install_mods_internal(
         app.clone(),
         config,
-        loaded.entries,
+        client_entries,
         state.download.clone(),
     )
     .await;

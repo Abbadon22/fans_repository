@@ -49,9 +49,31 @@ pub struct ModManifestEntry {
     pub base_url: Option<String>,
     #[serde(default)]
     pub files: Vec<ModFileEntry>,
+    /// `server` | `client` | `both` — что ставить на ПК игрока (лаунчер).
+    #[serde(default = "default_mod_side")]
+    pub side: String,
+}
+
+fn default_mod_side() -> String {
+    "both".to_string()
 }
 
 impl ModManifestEntry {
+    pub fn side_normalized(&self) -> &str {
+        let s = self.side.trim();
+        if s.eq_ignore_ascii_case("server") {
+            "server"
+        } else if s.eq_ignore_ascii_case("client") {
+            "client"
+        } else {
+            "both"
+        }
+    }
+
+    pub fn requires_client_install(&self) -> bool {
+        self.side_normalized() != "server"
+    }
+
     pub fn folder_names(&self) -> Vec<String> {
         if !self.names.is_empty() {
             return self.names.clone();
@@ -83,8 +105,10 @@ pub struct ModCheckResult {
     pub missing: Vec<String>,
     /// Папки, удалённые как не входящие в манифест.
     pub removed: Vec<String>,
-    /// Сколько архивов нужно скачать/переустановить.
+    /// Сколько архивов нужно скачать/переустановить (только client + both).
     pub pending_install: usize,
+    /// Моды только для dedicated server — лаунчер их не качает.
+    pub skipped_server: usize,
 }
 
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
@@ -185,6 +209,13 @@ fn parse_manifest_json(content: &str) -> Result<Vec<ModManifestEntry>, String> {
         if entry.name.trim().is_empty() {
             return Err(format!("некорректная запись мода: {:?}", entry.name));
         }
+        let side = entry.side_normalized();
+        if side != "server" && side != "client" && side != "both" {
+            return Err(format!(
+                "мод «{}»: поле side должно быть server, client или both",
+                entry.name
+            ));
+        }
         if entry.is_folder() {
             if entry
                 .base_url
@@ -277,6 +308,49 @@ fn manifest_folder_names(manifest: &[ModManifestEntry]) -> HashSet<String> {
         .iter()
         .flat_map(|entry| entry.folder_names())
         .collect()
+}
+
+fn count_server_only(manifest: &[ModManifestEntry]) -> usize {
+    manifest
+        .iter()
+        .filter(|e| !e.requires_client_install())
+        .count()
+}
+
+/// Убрать с ПК игрока папки модов, которые нужны только на dedicated server.
+pub fn purge_server_only_mods_from_client(
+    app: &AppHandle,
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+) -> Result<Vec<String>, String> {
+    let mods_dir = match config.mods_dir() {
+        Ok(p) => p,
+        Err(_) => return Ok(Vec::new()),
+    };
+    if !mods_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut removed = Vec::new();
+    for entry in manifest.iter().filter(|e| !e.requires_client_install()) {
+        let had_any = entry.folder_names().iter().any(|folder| {
+            mods_dir.join(folder).is_dir() || marker_path(&mods_dir, folder).is_file()
+        });
+        if had_any {
+            clear_mod_entry_files(&mods_dir, entry)?;
+            for folder in entry.folder_names() {
+                removed.push(folder);
+            }
+            emit_log(
+                app,
+                &format!(
+                    "Удалён с клиента «{}» (только server — отдаётся с dedicated)",
+                    entry.name
+                ),
+            );
+        }
+    }
+    Ok(removed)
 }
 
 fn folder_in_manifest(name: &str, allowed: &HashSet<String>) -> bool {
@@ -377,6 +451,66 @@ pub fn clear_mod_entry_files(mods_dir: &Path, entry: &ModManifestEntry) -> Resul
     Ok(())
 }
 
+fn folder_name_eq(a: &str, b: &str) -> bool {
+    if a == b {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        return a.eq_ignore_ascii_case(b);
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+fn find_manifest_entry<'a>(
+    manifest: &'a [ModManifestEntry],
+    mod_name: &str,
+) -> Option<&'a ModManifestEntry> {
+    let q = mod_name.trim();
+    manifest.iter().find(|e| {
+        e.name == q
+            || e.archive.as_deref() == Some(q)
+            || e.folder_names().iter().any(|f| folder_name_eq(f, q))
+    })
+}
+
+/// Проблемы установки одной записи манифеста (папка + маркер + хеш).
+fn entry_folder_issues(mods_dir: &Path, entry: &ModManifestEntry) -> Vec<String> {
+    let expected = entry.fingerprint();
+    let mut issues = Vec::new();
+
+    for folder in entry.folder_names() {
+        let folder_path = mods_dir.join(&folder);
+        let marker = marker_path(mods_dir, &folder);
+
+        if !folder_path.is_dir() {
+            if marker.is_file() {
+                let _ = fs::remove_file(&marker);
+            }
+            issues.push(format!("папка «{folder}» отсутствует"));
+            continue;
+        }
+
+        if !marker.is_file() {
+            issues.push(format!("«{folder}» не установлен лаунчером"));
+            continue;
+        }
+
+        let stored = fs::read_to_string(&marker)
+            .unwrap_or_default()
+            .trim()
+            .to_lowercase();
+        if stored != expected {
+            issues.push(format!("«{folder}»: устарел, нужно обновить"));
+        }
+    }
+
+    issues
+}
+
 /// Удалить мод по имени из манифеста (папки + маркеры).
 pub fn remove_manifest_mod(
     app: &AppHandle,
@@ -384,9 +518,7 @@ pub fn remove_manifest_mod(
     manifest: &[ModManifestEntry],
     mod_name: &str,
 ) -> Result<(), String> {
-    let entry = manifest
-        .iter()
-        .find(|e| e.name == mod_name)
+    let entry = find_manifest_entry(manifest, mod_name)
         .ok_or_else(|| format!("Мод «{mod_name}» не найден в манифесте"))?;
 
     let mods_dir = config.mods_dir()?;
@@ -431,6 +563,12 @@ pub fn check_mods_internal(
     manifest: &[ModManifestEntry],
 ) -> ModCheckResult {
     let mut missing = Vec::new();
+    let skipped_server = count_server_only(manifest);
+    let client_manifest: Vec<ModManifestEntry> = manifest
+        .iter()
+        .filter(|e| e.requires_client_install())
+        .cloned()
+        .collect();
 
     let mods_dir = match config.mods_dir() {
         Ok(p) => p,
@@ -441,78 +579,47 @@ pub fn check_mods_internal(
                 missing,
                 removed: Vec::new(),
                 pending_install: 0,
+                skipped_server,
             };
         }
     };
 
     if !mods_dir.is_dir() {
-        for entry in manifest {
+        for entry in &client_manifest {
             missing.push(format!("Папка Mods отсутствует, нужен мод: {}", entry.name));
         }
         return ModCheckResult {
             ok: missing.is_empty(),
             missing,
             removed: Vec::new(),
-            pending_install: manifest.len(),
+            pending_install: client_manifest.len(),
+            skipped_server,
         };
     }
 
-    for entry in manifest {
-        let expected = entry.fingerprint();
-        let folder_names = entry.folder_names();
-        for folder in &folder_names {
-            let marker = marker_path(&mods_dir, folder);
-
-            if !marker.is_file() {
-                missing.push(format!(
-                    "Мод «{}» не установлен лаунчером (нет маркера хеша)",
-                    folder
-                ));
-                continue;
-            }
-
-            let stored = fs::read_to_string(&marker)
-                .unwrap_or_default()
-                .trim()
-                .to_lowercase();
-            if stored != expected {
-                missing.push(format!(
-                    "Мод «{}»: хеш не совпадает (ожидается {}, в маркере {})",
-                    folder, expected, stored
-                ));
-            }
+    for entry in &client_manifest {
+        let issues = entry_folder_issues(&mods_dir, entry);
+        if !issues.is_empty() {
+            missing.push(format!("Мод «{}»: {}", entry.name, issues.join("; ")));
         }
     }
 
-    let pending_install = entries_needing_install(config, manifest)
+    let pending_install = entries_needing_install(config, &client_manifest)
         .map(|v| v.len())
-        .unwrap_or(manifest.len());
+        .unwrap_or(client_manifest.len());
 
     ModCheckResult {
         ok: missing.is_empty(),
         missing,
         removed: Vec::new(),
         pending_install,
+        skipped_server,
     }
 }
 
-/// Нужна ли переустановка записи манифеста (нет маркера или хеш не совпадает).
+/// Нужна ли переустановка записи манифеста (нет папки, маркера или хеш устарел).
 fn entry_needs_install(mods_dir: &Path, entry: &ModManifestEntry) -> bool {
-    let expected = entry.fingerprint();
-    for folder in entry.folder_names() {
-        let marker = marker_path(mods_dir, &folder);
-        if !marker.is_file() {
-            return true;
-        }
-        let stored = fs::read_to_string(&marker)
-            .unwrap_or_default()
-            .trim()
-            .to_lowercase();
-        if stored != expected {
-            return true;
-        }
-    }
-    false
+    !entry_folder_issues(mods_dir, entry).is_empty()
 }
 
 /// Только моды, которых нет или которые устарели.
@@ -522,11 +629,15 @@ pub fn entries_needing_install(
 ) -> Result<Vec<ModManifestEntry>, String> {
     let mods_dir = config.mods_dir()?;
     if !mods_dir.is_dir() {
-        return Ok(manifest.to_vec());
+        return Ok(manifest
+            .iter()
+            .filter(|e| e.requires_client_install())
+            .cloned()
+            .collect());
     }
     Ok(manifest
         .iter()
-        .filter(|entry| entry_needs_install(&mods_dir, entry))
+        .filter(|entry| entry.requires_client_install() && entry_needs_install(&mods_dir, entry))
         .cloned()
         .collect())
 }
@@ -588,6 +699,16 @@ pub async fn download_and_install_mods_internal(
 
             emit_log(&app, &format!("Распаковка «{}» в Mods/…", entry.name));
             extract_zip_safe(&zip_bytes, &mods_dir)?;
+
+            for folder in entry.folder_names() {
+                if !mods_dir.join(&folder).is_dir() {
+                    return Err(format!(
+                        "После распаковки «{}» не найдена папка «{folder}» в Mods/. \
+                         Проверьте имена в манифесте.",
+                        entry.name
+                    ));
+                }
+            }
 
             ensure_marker_dir(&mods_dir)?;
             for folder in entry.folder_names() {

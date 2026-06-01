@@ -7,7 +7,7 @@ import { ModsView } from "./components/ModsView";
 import { LogView } from "./components/LogView";
 import { SettingsView } from "./components/SettingsView";
 import { useLauncher } from "./hooks/useLauncher";
-import { modStatuses } from "./utils/mods";
+import { clientInstallRows, modStatuses } from "./utils/mods";
 
 export default function App() {
   const [view, setView] = useState<AppView>("main");
@@ -39,12 +39,11 @@ export default function App() {
     state.isDownloading || (busy && (state.progress > 0 || state.downloadProgress != null));
   const showCheckingBar = state.isChecking && !state.downloadProgress;
 
-  const missingModsCount = modStatuses(state.manifest, state.modCheck).filter(
+  const modRows = modStatuses(state.manifest, state.modCheck);
+  const missingModsCount = clientInstallRows(modRows).filter(
     (i) => i.status === "missing",
   ).length;
-  const okModsCount = modStatuses(state.manifest, state.modCheck).filter(
-    (i) => i.status === "ok",
-  ).length;
+  const okModsCount = clientInstallRows(modRows).filter((i) => i.status === "ok").length;
 
   const pendingInstall = state.modCheck?.pending_install ?? 0;
 

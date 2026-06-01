@@ -3,7 +3,9 @@ import { ProgressBar } from "./ProgressBar";
 import { ViewHeader } from "./ViewHeader";
 import type { ModCheckResult, ModManifestEntry } from "../types";
 import type { DownloadProgress } from "../types";
-import { modStatuses } from "../utils/mods";
+import { useModal } from "../context/ModalContext";
+import { countBySide } from "../utils/modSide";
+import { clientInstallRows, modStatuses } from "../utils/mods";
 
 interface ModsViewProps {
   manifest: ModManifestEntry[];
@@ -42,13 +44,16 @@ export function ModsView({
   onResumeDownload,
   onCancelDownload,
 }: ModsViewProps) {
+  const { confirm } = useModal();
   const items = modStatuses(manifest, modCheck);
-  const okCount = items.filter((i) => i.status === "ok").length;
-  const missingCount = items.filter((i) => i.status === "missing").length;
+  const clientItems = clientInstallRows(items);
+  const okCount = clientItems.filter((i) => i.status === "ok").length;
+  const missingCount = clientItems.filter((i) => i.status === "missing").length;
+  const { clientInstall, server } = countBySide(manifest);
 
   const subtitle =
     manifestSource != null
-      ? `${okCount}/${manifest.length} готово${missingCount > 0 ? ` · ${missingCount} нужно обновить` : ""}`
+      ? `${okCount}/${clientInstall} на клиенте${server > 0 ? ` · ${server} только сервер` : ""}${missingCount > 0 ? ` · ${missingCount} к загрузке` : ""}`
       : `${manifest.length} модов в манифесте`;
 
   return (
@@ -61,15 +66,18 @@ export function ModsView({
             <button
               type="button"
               className="btn-soft border-amber-500/30 text-amber-200/90"
-              disabled={busy || manifest.length === 0}
+              disabled={busy || clientInstall === 0}
               onClick={() => {
-                if (
-                  window.confirm(
-                    `Переустановить все ${manifest.length} мод(ов)?\n\nТекущие файлы будут удалены и скачаны заново.`,
-                  )
-                ) {
-                  onReinstallAll();
-                }
+                void (async () => {
+                  const ok = await confirm({
+                    title: "Переустановить моды?",
+                    message: `Удалить и скачать заново ${clientInstall} мод(ов) для вашего ПК.\n\n${server} server-only не затрагиваются.`,
+                    confirmLabel: "Переустановить",
+                    cancelLabel: "Отмена",
+                    variant: "danger",
+                  });
+                  if (ok) onReinstallAll();
+                })();
               }}
             >
               Переустановить все

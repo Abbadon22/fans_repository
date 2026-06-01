@@ -7,5 +7,6 @@ export function normalizeModCheck(raw: ModCheckResult): ModCheckResult {
     missing: raw.missing ?? [],
     removed: raw.removed ?? [],
     pending_install: raw.pending_install ?? 0,
+    skipped_server: raw.skipped_server ?? 0,
   };
 }

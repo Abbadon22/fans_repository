@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import type { ModManifestEntry, ModCheckResult } from "../types";
-import { modStatuses } from "../utils/mods";
+import { useModal } from "../context/ModalContext";
+import { countBySide, modSideShort } from "../utils/modSide";
+import { clientInstallRows, modStatuses, type ModInstallStatus } from "../utils/mods";
 
 interface ModsPanelProps {
   manifest: ModManifestEntry[];
@@ -27,15 +29,20 @@ export function ModsPanel({
   onReinstallAll,
   hideHeader = false,
 }: ModsPanelProps) {
+  const { confirm } = useModal();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "missing" | "ok">("all");
 
   const items = modStatuses(manifest, modCheck);
+  const clientItems = clientInstallRows(items);
+  const sideCounts = countBySide(manifest);
+  const skippedServer = modCheck?.skipped_server ?? sideCounts.server;
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((item) => {
       if (filter === "missing" && item.status !== "missing") return false;
-      if (filter === "ok" && item.status !== "ok") return false;
+      if (filter === "ok" && item.status !== "ok" && item.status !== "server_skip") return false;
       if (!q) return true;
       return (
         item.name.toLowerCase().includes(q) ||
@@ -44,11 +51,22 @@ export function ModsPanel({
       );
     });
   }, [items, query, filter]);
-  const okCount = items.filter((i) => i.status === "ok").length;
-  const missingCount = items.filter((i) => i.status === "missing").length;
-  const unknownCount = items.length - okCount - missingCount;
+
+  const okCount = clientItems.filter((i) => i.status === "ok").length;
+  const missingCount = clientItems.filter((i) => i.status === "missing").length;
   const removed = modCheck?.removed ?? [];
-  const upToDate = Math.max(0, manifest.length - pendingInstall - missingCount);
+
+  const handleReinstallAll = async () => {
+    const n = sideCounts.clientInstall;
+    const ok = await confirm({
+      title: "Переустановить моды?",
+      message: `Будут удалены и скачаны заново ${n} мод(ов) для вашего ПК.\n\n${skippedServer} server-only мод(ов) не затрагиваются — их отдаёт dedicated server.`,
+      confirmLabel: "Переустановить",
+      cancelLabel: "Отмена",
+      variant: "danger",
+    });
+    if (ok) onReinstallAll?.();
+  };
 
   return (
     <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden p-0">
@@ -59,7 +77,7 @@ export function ModsPanel({
               <p className="panel-title">Модпак</p>
               {manifest.length > 0 && (
                 <span className="rounded-md bg-void/80 px-2 py-0.5 text-xs font-bold tabular-nums text-gray-300">
-                  {okCount}/{manifest.length}
+                  {okCount}/{sideCounts.clientInstall}
                 </span>
               )}
             </div>
@@ -70,20 +88,12 @@ export function ModsPanel({
             )}
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {onReinstallAll && manifest.length > 0 && (
+            {onReinstallAll && sideCounts.clientInstall > 0 && (
               <button
                 type="button"
                 className="btn-soft border-amber-500/30 text-amber-200/90"
                 disabled={busy}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Переустановить все ${manifest.length} мод(ов)?\n\nПапки модов будут удалены и скачаны заново.`,
-                    )
-                  ) {
-                    onReinstallAll();
-                  }
-                }}
+                onClick={() => void handleReinstallAll()}
               >
                 Переустановить все
               </button>
@@ -124,20 +134,28 @@ export function ModsPanel({
         )}
 
         {manifest.length > 0 && (
-          <div className="grid shrink-0 grid-cols-3 gap-2">
-            <StatCard label="Всего" value={manifest.length} tone="neutral" />
-            <StatCard label="Актуально" value={okCount} tone="ok" />
+          <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard label="К установке" value={sideCounts.clientInstall} tone="neutral" />
+            <StatCard label="Готово" value={okCount} tone="ok" />
             <StatCard
               label="К загрузке"
-              value={pendingInstall > 0 ? pendingInstall : missingCount + unknownCount}
+              value={pendingInstall > 0 ? pendingInstall : missingCount}
               tone={pendingInstall > 0 || missingCount > 0 ? "warn" : "neutral"}
             />
+            <StatCard label="Только сервер" value={skippedServer} tone="neutral" />
+          </div>
+        )}
+
+        {skippedServer > 0 && !busy && (
+          <div className="shrink-0 rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100/90">
+            <span className="font-semibold">{skippedServer} мод(ов)</span> помечены как server-only —
+            лаунчер их не скачивает (конфиг отдаёт dedicated server при входе).
           </div>
         )}
 
         {removed.length > 0 && !busy && (
           <div className="shrink-0 rounded-xl border border-line-strong bg-void/50 px-4 py-3 text-sm text-gray-300">
-            <p className="font-semibold text-gray-200">Удалено с диска (нет в манифесте)</p>
+            <p className="font-semibold text-gray-200">Удалено с диска</p>
             <p className="mt-1 text-xs text-gray-500">{removed.join(", ")}</p>
           </div>
         )}
@@ -154,13 +172,13 @@ export function ModsPanel({
           </div>
         ) : pendingInstall > 0 && !busy ? (
           <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
-            <span className="font-semibold">{pendingInstall} мод(ов)</span> будут скачаны — остальные{" "}
-            {upToDate > 0 ? `(${upToDate} актуальны)` : ""} пропущены. Нажмите «Установить» внизу.
+            <span className="font-semibold">{pendingInstall} мод(ов)</span> будут скачаны на ваш ПК.
+            Server-only пропущены.
           </div>
         ) : missingCount > 0 && !busy ? (
           <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
-            <span className="font-semibold">{missingCount} мод(ов)</span> требуют установки или
-            обновления — нажмите «Установить» внизу.
+            <span className="font-semibold">{missingCount} мод(ов)</span> требуют установки —
+            нажмите «Установить» внизу.
           </div>
         ) : null}
 
@@ -170,72 +188,114 @@ export function ModsPanel({
               <li className="py-8 text-center text-sm text-gray-500">Ничего не найдено</li>
             ) : (
               filtered.map((item, index) => (
-              <li
-                key={item.key}
-                className="group rounded-xl border border-line bg-void/30 px-4 py-3 transition hover:border-line-strong hover:bg-void/50"
-                title={item.detail}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-gray-600">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <StatusDot status={item.status} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-base font-medium text-gray-100">{item.name}</p>
-                      {item.archive && (
-                        <span className="shrink-0 rounded bg-panel-raised px-2 py-0.5 font-mono text-[11px] text-gray-400">
-                          {item.archive}
-                        </span>
-                      )}
-                    </div>
-                    {item.folders.length > 1 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {item.folders.map((folder) => (
-                          <span
-                            key={folder}
-                            className="rounded-md border border-line bg-panel/60 px-2 py-0.5 font-mono text-[11px] text-gray-400"
-                          >
-                            {folder}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {item.detail && (
-                      <p className="mt-1.5 text-xs text-emerald-200/70">{item.detail}</p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <StatusPill status={item.status} />
-                    {onRemoveMod && (
-                      <button
-                        type="button"
-                        className="rounded-lg border border-line px-2 py-1 text-[10px] font-medium text-gray-500 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                        disabled={busy}
-                        title="Удалить мод с диска"
-                        onClick={() => {
-                          const folders = item.folders.join(", ");
-                          if (
-                            window.confirm(
-                              `Удалить «${item.name}»?\n\nБудут удалены папки: ${folders}`,
-                            )
-                          ) {
-                            onRemoveMod(item.name);
-                          }
-                        }}
-                      >
-                        Удалить
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))
+                <ModRow
+                  key={item.key}
+                  index={index}
+                  item={item}
+                  busy={busy}
+                  onRemoveMod={onRemoveMod}
+                />
+              ))
             )}
           </ul>
         )}
       </div>
     </section>
+  );
+}
+
+function ModRow({
+  index,
+  item,
+  busy,
+  onRemoveMod,
+}: {
+  index: number;
+  item: ReturnType<typeof modStatuses>[number];
+  busy: boolean;
+  onRemoveMod?: (modName: string) => void;
+}) {
+  const { confirm } = useModal();
+
+  const handleRemove = async () => {
+    if (item.status === "server_skip") return;
+    const ok = await confirm({
+      title: `Удалить «${item.name}»?`,
+      message: `Будут удалены папки:\n${item.folders.join("\n")}`,
+      confirmLabel: "Удалить",
+      cancelLabel: "Отмена",
+      variant: "danger",
+    });
+    if (ok) onRemoveMod?.(item.name);
+  };
+
+  return (
+    <li
+      className="group rounded-xl border border-line bg-void/30 px-4 py-3 transition hover:border-line-strong hover:bg-void/50"
+      title={item.detail}
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-gray-600">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <StatusDot status={item.status} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-medium text-gray-100">{item.name}</p>
+            <SideBadge side={item.side} />
+            {item.archive && (
+              <span className="shrink-0 rounded bg-panel-raised px-2 py-0.5 font-mono text-[11px] text-gray-400">
+                {item.archive}
+              </span>
+            )}
+          </div>
+          {(item.folders.length > 1 || item.folders[0] !== item.name) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {item.folders.map((folder) => (
+                <span
+                  key={folder}
+                  className="rounded-md border border-line bg-panel/60 px-2 py-0.5 font-mono text-[11px] text-gray-400"
+                >
+                  {folder}
+                </span>
+              ))}
+            </div>
+          )}
+          {item.detail && (
+            <p className="mt-1.5 text-xs text-emerald-200/70">{item.detail}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <StatusPill status={item.status} />
+          {onRemoveMod && item.status !== "server_skip" && (
+            <button
+              type="button"
+              className="rounded-lg border border-line px-2 py-1 text-[10px] font-medium text-gray-500 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+              disabled={busy}
+              title="Удалить мод с диска"
+              onClick={() => void handleRemove()}
+            >
+              Удалить
+            </button>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function SideBadge({ side }: { side: string }) {
+  const short = modSideShort(side);
+  const cls =
+    side === "server"
+      ? "bg-sky-500/15 text-sky-300 ring-sky-500/25"
+      : side === "client"
+        ? "bg-violet-500/15 text-violet-300 ring-violet-500/25"
+        : "bg-amber-500/10 text-amber-200/90 ring-amber-500/20";
+  return (
+    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ring-1 ${cls}`}>
+      {short}
+    </span>
   );
 }
 
@@ -273,11 +333,7 @@ function StatCard({
   tone: "ok" | "warn" | "neutral";
 }) {
   const valueCls =
-    tone === "ok"
-      ? "text-mint"
-      : tone === "warn"
-        ? "text-brand"
-        : "text-white";
+    tone === "ok" ? "text-mint" : tone === "warn" ? "text-brand" : "text-white";
   return (
     <div className="rounded-xl border border-line bg-void/40 px-3 py-2.5 text-center">
       <p className={`text-xl font-bold tabular-nums ${valueCls}`}>{value}</p>
@@ -288,25 +344,35 @@ function StatCard({
   );
 }
 
-function StatusDot({ status }: { status: "ok" | "missing" | "unknown" }) {
+function StatusDot({ status }: { status: ModInstallStatus }) {
   const cls =
     status === "ok"
       ? "bg-mint shadow-[0_0_10px_rgba(52,211,153,0.45)]"
       : status === "missing"
         ? "bg-brand shadow-[0_0_10px_rgba(16,185,129,0.45)] animate-pulse"
-        : "bg-gray-600";
+        : status === "server_skip"
+          ? "bg-sky-500/80"
+          : "bg-gray-600";
   return <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cls}`} aria-hidden />;
 }
 
-function StatusPill({ status }: { status: "ok" | "missing" | "unknown" }) {
+function StatusPill({ status }: { status: ModInstallStatus }) {
   const cls =
     status === "ok"
       ? "bg-mint/10 text-mint ring-mint/20"
       : status === "missing"
         ? "bg-brand/10 text-brand ring-brand/20"
-        : "bg-panel-raised text-gray-500 ring-line";
+        : status === "server_skip"
+          ? "bg-sky-500/10 text-sky-300 ring-sky-500/20"
+          : "bg-panel-raised text-gray-500 ring-line";
   const label =
-    status === "ok" ? "Готов" : status === "missing" ? "Нужен" : "Ожидание";
+    status === "ok"
+      ? "Готов"
+      : status === "missing"
+        ? "Нужен"
+        : status === "server_skip"
+          ? "Сервер"
+          : "Ожидание";
   return (
     <span
       className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-bold uppercase ring-1 ${cls}`}

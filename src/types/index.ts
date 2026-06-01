@@ -16,6 +16,9 @@ export interface ManifestLoadResult {
   source: string;
 }
 
+/** Сторона установки мода в мультиплеере. */
+export type ModSide = "server" | "client" | "both";
+
 /** Запись манифеста мода. */
 export interface ModManifestEntry {
   name: string;
@@ -23,6 +26,8 @@ export interface ModManifestEntry {
   names?: string[];
   /** Имя zip в репозитории Mods/. */
   archive?: string;
+  /** server — не качается на ПК игрока; client/both — ставит лаунчер. */
+  side?: ModSide;
   url: string;
   sha256: string;
 }
@@ -33,6 +38,7 @@ export interface ModCheckResult {
   missing: string[];
   removed: string[];
   pending_install: number;
+  skipped_server: number;
 }
 
 /** Детальный прогресс загрузки с бэкенда. */

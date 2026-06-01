@@ -91,6 +91,30 @@ function detectModFolders(zip) {
   return (withModInfo.length > 0 ? withModInfo : [...roots]).sort();
 }
 
+function detectSide(archive, displayName, zipPath) {
+  const zip = new AdmZip(zipPath);
+  const base = archive;
+  let dll = 0;
+  let unity = 0;
+  let tex = 0;
+  let config = 0;
+  for (const e of zip.getEntries()) {
+    if (e.isDirectory) continue;
+    const n = e.entryName.replace(/\\/g, "/");
+    if (/__MACOSX|\.DS_Store/.test(n)) continue;
+    if (/\.dll$/i.test(n)) dll++;
+    if (/\.unity3d$/i.test(n) || /Resources\//i.test(n)) unity++;
+    if (/\.(png|jpg|dds)$/i.test(n) || /UIAtlases/i.test(n)) tex++;
+    if (/\/Config\//i.test(n)) config++;
+  }
+  const serverInName = /server[- ]?side/i.test(base) || /server[- ]?side/i.test(displayName);
+  if (/^(0-)?quartz|smxcore|zsmxhud/i.test(base)) return "client";
+  if (serverInName && dll === 0 && unity === 0 && tex === 0) return "server";
+  if (dll > 0 || unity > 0) return "both";
+  if (config > 0 && dll === 0 && unity === 0 && tex === 0) return "server";
+  return "both";
+}
+
 function displayName(archive, names, override) {
   if (override?.trim()) return override.trim();
   if (names.length === 1) return names[0];
@@ -150,17 +174,22 @@ async function main() {
       continue;
     }
 
+    const entryName = displayName(archive, names, nameOverride);
+    const side = existsSync(zipPath) ? detectSide(archive, entryName, zipPath) : "both";
+
     manifest.push({
       archive,
-      name: displayName(archive, names, nameOverride),
+      name: entryName,
       names,
       url: yandexUrl.trim(),
       sha256,
+      side,
     });
 
     console.log(`  url:    ${yandexUrl}`);
     console.log(`  sha256: ${sha256}`);
     console.log(`  mods:   ${names.join(", ")}`);
+    console.log(`  side:   ${side}`);
   }
 
   manifest.sort((a, b) => a.name.localeCompare(b.name, "ru"));

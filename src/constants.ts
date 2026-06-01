@@ -2,7 +2,7 @@
 export const FAN_SERVER_HOST = "epyc2.worldhosts.fun";
 export const FAN_SERVER_PORT = 27681;
 export const FAN_WEB_PORT = 22499;
-export const APP_VERSION = "1.0.15";
+export const APP_VERSION = "1.0.16";
 
 /** Страница релизов — единственный способ скачать лаунчер для игроков. */
 export const RELEASES_URL =
