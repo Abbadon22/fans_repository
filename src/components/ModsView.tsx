@@ -9,7 +9,6 @@ import { clientInstallRows, modStatuses } from "../utils/mods";
 
 interface ModsViewProps {
   manifest: ModManifestEntry[];
-  manifestSource: string | null;
   modCheck: ModCheckResult | null;
   busy: boolean;
   showProgress: boolean;
@@ -28,7 +27,6 @@ interface ModsViewProps {
 
 export function ModsView({
   manifest,
-  manifestSource,
   modCheck,
   busy,
   showProgress,
@@ -49,11 +47,11 @@ export function ModsView({
   const clientItems = clientInstallRows(items);
   const okCount = clientItems.filter((i) => i.status === "ok").length;
   const missingCount = clientItems.filter((i) => i.status === "missing").length;
-  const { clientInstall, server } = countBySide(manifest);
+  const { clientInstall } = countBySide(manifest);
 
   const subtitle =
-    manifestSource != null
-      ? `${okCount}/${clientInstall} на клиенте${server > 0 ? ` · ${server} только сервер` : ""}${missingCount > 0 ? ` · ${missingCount} к загрузке` : ""}`
+    manifest.length > 0
+      ? `${okCount}/${clientInstall} готово${missingCount > 0 ? ` · ${missingCount} к загрузке` : ""}`
       : `${manifest.length} модов в манифесте`;
 
   return (
@@ -71,7 +69,7 @@ export function ModsView({
                 void (async () => {
                   const ok = await confirm({
                     title: "Переустановить моды?",
-                    message: `Удалить и скачать заново ${clientInstall} мод(ов) для вашего ПК.\n\n${server} server-only не затрагиваются.`,
+                    message: `Удалить и скачать заново ${clientInstall} мод(ов) для вашего ПК.`,
                     confirmLabel: "Переустановить",
                     cancelLabel: "Отмена",
                     variant: "danger",
@@ -90,12 +88,6 @@ export function ModsView({
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 py-4">
-        {manifestSource && (
-          <p className="shrink-0 truncate text-xs text-gray-500" title={manifestSource}>
-            Источник: {manifestSource}
-          </p>
-        )}
-
         {(showProgress || showCheckingBar) && (
           <ProgressBar
             progress={downloadProgress}
@@ -110,7 +102,6 @@ export function ModsView({
 
         <ModsPanel
           manifest={manifest}
-          manifestSource={null}
           modCheck={modCheck}
           pendingInstall={pendingInstall}
           busy={busy}

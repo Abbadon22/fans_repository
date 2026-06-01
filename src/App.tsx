@@ -125,7 +125,6 @@ export default function App() {
         {view === "mods" && (
           <ModsView
             manifest={state.manifest}
-            manifestSource={state.manifestSource}
             modCheck={state.modCheck}
             busy={busy}
             showProgress={showProgress || showCheckingBar}

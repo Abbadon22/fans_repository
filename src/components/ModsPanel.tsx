@@ -6,7 +6,6 @@ import { clientInstallRows, modStatuses, type ModInstallStatus } from "../utils/
 
 interface ModsPanelProps {
   manifest: ModManifestEntry[];
-  manifestSource: string | null;
   modCheck: ModCheckResult | null;
   pendingInstall: number;
   busy: boolean;
@@ -19,7 +18,6 @@ interface ModsPanelProps {
 
 export function ModsPanel({
   manifest,
-  manifestSource,
   modCheck,
   pendingInstall,
   busy,
@@ -36,7 +34,6 @@ export function ModsPanel({
   const items = modStatuses(manifest, modCheck);
   const clientItems = clientInstallRows(items);
   const sideCounts = countBySide(manifest);
-  const skippedServer = modCheck?.skipped_server ?? sideCounts.server;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -60,7 +57,7 @@ export function ModsPanel({
     const n = sideCounts.clientInstall;
     const ok = await confirm({
       title: "Переустановить моды?",
-      message: `Будут удалены и скачаны заново ${n} мод(ов) для вашего ПК.\n\n${skippedServer} server-only мод(ов) не затрагиваются — их отдаёт dedicated server.`,
+      message: `Будут удалены и скачаны заново ${n} мод(ов) для вашего ПК.`,
       confirmLabel: "Переустановить",
       cancelLabel: "Отмена",
       variant: "danger",
@@ -81,11 +78,6 @@ export function ModsPanel({
                 </span>
               )}
             </div>
-            {manifestSource && (
-              <p className="mt-0.5 truncate text-xs text-gray-500" title={manifestSource}>
-                {manifestSource}
-              </p>
-            )}
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {onReinstallAll && sideCounts.clientInstall > 0 && (
@@ -134,7 +126,7 @@ export function ModsPanel({
         )}
 
         {manifest.length > 0 && (
-          <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid shrink-0 grid-cols-3 gap-2">
             <StatCard label="К установке" value={sideCounts.clientInstall} tone="neutral" />
             <StatCard label="Готово" value={okCount} tone="ok" />
             <StatCard
@@ -142,14 +134,6 @@ export function ModsPanel({
               value={pendingInstall > 0 ? pendingInstall : missingCount}
               tone={pendingInstall > 0 || missingCount > 0 ? "warn" : "neutral"}
             />
-            <StatCard label="Только сервер" value={skippedServer} tone="neutral" />
-          </div>
-        )}
-
-        {skippedServer > 0 && !busy && (
-          <div className="shrink-0 rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100/90">
-            <span className="font-semibold">{skippedServer} мод(ов)</span> помечены как server-only —
-            лаунчер их не скачивает (конфиг отдаёт dedicated server при входе).
           </div>
         )}
 
@@ -173,7 +157,6 @@ export function ModsPanel({
         ) : pendingInstall > 0 && !busy ? (
           <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">
             <span className="font-semibold">{pendingInstall} мод(ов)</span> будут скачаны на ваш ПК.
-            Server-only пропущены.
           </div>
         ) : missingCount > 0 && !busy ? (
           <div className="shrink-0 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-emerald-100/90">

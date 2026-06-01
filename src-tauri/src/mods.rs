@@ -114,6 +114,13 @@ pub struct ModCheckResult {
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
 const MANIFEST_FETCH_TIMEOUT_SECS: u64 = 20;
 const MARKER_DIR_NAME: &str = ".launcher-meta";
+
+/// Служебные моды сервера (Alloc / TFP) — не в manifest.json, никогда не удалять из Mods/.
+const PROTECTED_MOD_FOLDERS: &[&str] = &[
+    "TFP_CommandExtensions",
+    "TFP_MapRendering",
+    "TFP_WebServer",
+];
 /// Пауза между модами с Яндекс.Диска (снижает HTTP 429).
 const YANDEX_BETWEEN_MODS_MS: u64 = 2500;
 const YANDEX_HTTP_MAX_ATTEMPTS: u32 = 7;
@@ -374,6 +381,12 @@ fn folder_in_manifest(name: &str, allowed: &HashSet<String>) -> bool {
     }
 }
 
+fn is_protected_mod_folder(name: &str) -> bool {
+    PROTECTED_MOD_FOLDERS
+        .iter()
+        .any(|protected| name == *protected || name.eq_ignore_ascii_case(protected))
+}
+
 /// Удалить из Mods/ папки модов, которых нет в манифесте сервера.
 pub fn remove_mods_not_in_manifest(
     app: &AppHandle,
@@ -401,7 +414,10 @@ pub fn remove_mods_not_in_manifest(
         }
 
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name == MARKER_DIR_NAME || folder_in_manifest(&name, &allowed) {
+        if name == MARKER_DIR_NAME
+            || is_protected_mod_folder(&name)
+            || folder_in_manifest(&name, &allowed)
+        {
             continue;
         }
 
