@@ -1,11 +1,11 @@
 use crate::config::LauncherConfig;
 use crate::download_control::DownloadControl;
 use futures_util::StreamExt;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
+use std::sync::{Arc, Mutex};
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
@@ -114,6 +114,11 @@ pub struct ModCheckResult {
 const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
 const MANIFEST_FETCH_TIMEOUT_SECS: u64 = 20;
 const MARKER_DIR_NAME: &str = ".launcher-meta";
+/// Пауза между модами с Яндекс.Диска (снижает HTTP 429).
+const YANDEX_BETWEEN_MODS_MS: u64 = 2500;
+const YANDEX_HTTP_MAX_ATTEMPTS: u32 = 7;
+
+type YandexHrefCache = Arc<Mutex<HashMap<String, String>>>;
 
 /// Откуда взят манифест (для UI и логов).
 #[derive(Debug, Clone, Serialize)]
@@ -660,9 +665,15 @@ pub async fn download_and_install_mods_internal(
         .build()
         .map_err(|e| format!("Ошибка HTTP-клиента: {e}"))?;
 
+    let yandex_href_cache: YandexHrefCache = Arc::new(Mutex::new(HashMap::new()));
     let total = manifest.len();
     for (index, entry) in manifest.iter().enumerate() {
         control.wait_until_running().await?;
+
+        if index > 0 && entry_uses_yandex_disk(entry) {
+            tokio::time::sleep(Duration::from_millis(YANDEX_BETWEEN_MODS_MS)).await;
+            control.wait_until_running().await?;
+        }
 
         emit_log(
             &app,
@@ -685,6 +696,7 @@ pub async fn download_and_install_mods_internal(
                 total,
                 false,
                 &control,
+                Some(&yandex_href_cache),
             )
             .await?;
 
@@ -750,9 +762,103 @@ fn emit_download_progress(app: &AppHandle, payload: DownloadProgressPayload) {
     let _ = app.emit("progress", payload.percent);
 }
 
+fn entry_uses_yandex_disk(entry: &ModManifestEntry) -> bool {
+    entry
+        .url
+        .as_deref()
+        .map(|u| u.contains("disk.yandex.ru") || u.contains("yandex.ru/d/"))
+        .unwrap_or(false)
+}
+
+fn is_rate_limited_status(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 429 | 502 | 503)
+}
+
+fn retry_wait_secs(attempt: u32, retry_after: Option<u64>) -> u64 {
+    if let Some(secs) = retry_after {
+        return secs.clamp(1, 120);
+    }
+    match attempt {
+        1 => 3,
+        2 => 6,
+        3 => 12,
+        4 => 24,
+        5 => 45,
+        _ => 60,
+    }
+}
+
+fn parse_retry_after(response: &reqwest::Response) -> Option<u64> {
+    response
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<u64>().ok())
+}
+
+/// GET с повторами при 429/503 (лимит Яндекс.Диска).
+async fn http_get_with_retry(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    url: &str,
+    context: &str,
+    control: &DownloadControl,
+) -> Result<reqwest::Response, String> {
+    for attempt in 1..=YANDEX_HTTP_MAX_ATTEMPTS {
+        control.wait_until_running().await?;
+
+        let response = client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| format!("{context}: сеть — {e}"))?;
+
+        if response.status().is_success() {
+            return Ok(response);
+        }
+
+        let status = response.status();
+        if is_rate_limited_status(status) && attempt < YANDEX_HTTP_MAX_ATTEMPTS {
+            let wait = retry_wait_secs(attempt, parse_retry_after(&response));
+            emit_log(
+                app,
+                &format!(
+                    "Яндекс.Диск: слишком много запросов (HTTP {status}), пауза {wait} с… (попытка {attempt}/{max})",
+                    status = status.as_u16(),
+                    wait = wait,
+                    attempt = attempt,
+                    max = YANDEX_HTTP_MAX_ATTEMPTS,
+                ),
+            );
+            tokio::time::sleep(Duration::from_secs(wait)).await;
+            continue;
+        }
+
+        return Err(format!("{context}: HTTP {status}"));
+    }
+
+    Err(format!(
+        "{context}: лимит Яндекс.Диска — попробуйте через несколько минут"
+    ))
+}
+
 /// Разрешить прямую ссылку: Яндекс.Диск API возвращает JSON с полем `href`.
-async fn resolve_download_url(client: &reqwest::Client, url: &str) -> Result<String, String> {
-    let normalized_url = if url.contains("disk.yandex.ru/") {
+async fn resolve_download_url(
+    app: &AppHandle,
+    client: &reqwest::Client,
+    url: &str,
+    control: &DownloadControl,
+    cache: Option<&YandexHrefCache>,
+) -> Result<String, String> {
+    if let Some(c) = cache {
+        if let Ok(guard) = c.lock() {
+            if let Some(href) = guard.get(url) {
+                return Ok(href.clone());
+            }
+        }
+    }
+
+    let normalized_url = if url.contains("disk.yandex.ru/") || url.contains("yandex.ru/d/") {
         let encoded = urlencoding::encode(url);
         format!(
             "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={encoded}"
@@ -765,19 +871,14 @@ async fn resolve_download_url(client: &reqwest::Client, url: &str) -> Result<Str
         return Ok(url.to_string());
     }
 
-    let response = client
-        .get(&normalized_url)
-        .send()
-        .await
-        .map_err(|e| format!("Ошибка запроса к Яндекс.Диску: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Яндекс.Диск вернул HTTP {} для {}",
-            response.status(),
-            normalized_url
-        ));
-    }
+    let response = http_get_with_retry(
+        app,
+        client,
+        &normalized_url,
+        "Запрос ссылки Яндекс.Диска",
+        control,
+    )
+    .await?;
 
     let content_type = response
         .headers()
@@ -794,10 +895,14 @@ async fn resolve_download_url(client: &reqwest::Client, url: &str) -> Result<Str
             .json()
             .await
             .map_err(|e| format!("Некорректный ответ Яндекс.Диска: {e}"))?;
+        if let Some(c) = cache {
+            if let Ok(mut guard) = c.lock() {
+                guard.insert(url.to_string(), body.href.clone());
+            }
+        }
         return Ok(body.href);
     }
 
-    // Уже прямая ссылка (редирект обработает reqwest)
     Ok(normalized_url)
 }
 
@@ -811,21 +916,15 @@ async fn download_with_progress(
     mod_total: usize,
     is_file: bool,
     control: &DownloadControl,
+    yandex_cache: Option<&YandexHrefCache>,
 ) -> Result<Vec<u8>, String> {
-    let resolved = resolve_download_url(client, url).await?;
+    let resolved = resolve_download_url(app, client, url, control, yandex_cache).await?;
     if !is_file {
         emit_log(app, "Получена прямая ссылка на архив, загрузка…");
     }
 
-    let response = client
-        .get(&resolved)
-        .send()
-        .await
-        .map_err(|e| format!("Сетевая ошибка при загрузке: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!("HTTP {} при загрузке {}", response.status(), url));
-    }
+    let context = format!("Загрузка «{mod_name}»");
+    let response = http_get_with_retry(app, client, &resolved, &context, control).await?;
 
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded: u64 = 0;
@@ -969,6 +1068,7 @@ async fn install_folder_mod(
             mod_total,
             true,
             control,
+            None,
         )
         .await?;
 
