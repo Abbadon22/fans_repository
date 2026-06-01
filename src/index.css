@@ -79,45 +79,40 @@
     @apply rounded-lg border border-line bg-panel-raised/70 px-3 py-2 text-sm font-medium text-gray-300 transition duration-150 hover:border-line-strong hover:bg-panel-hover hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
   }
 
-  .btn-accent {
-    @apply rounded-lg border border-brand/40 bg-brand px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_20px_rgba(16,185,129,0.25)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+  .play-btn-ready {
+    background: linear-gradient(135deg, #34d399 0%, #10b981 45%, #059669 100%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+      0 10px 28px rgba(16, 185, 129, 0.4);
   }
 
-  .sidebar {
-    @apply backdrop-blur-xl;
+  .play-btn-ready:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+      0 12px 36px rgba(16, 185, 129, 0.5);
   }
 
-  .content-shell {
-    background-image: radial-gradient(ellipse 80% 50% at 80% 0%, rgba(16, 185, 129, 0.06), transparent 55%);
+  .play-btn-idle {
+    @apply bg-gradient-to-b from-gray-700 to-gray-800 text-gray-400;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
-  .hero-card {
-    @apply rounded-2xl border px-6 py-5;
+  .play-btn-idle:disabled {
+    @apply opacity-90;
   }
 
-  .hero-card--ready {
-    @apply border-mint/20 bg-mint/5;
+  .play-btn-running {
+    background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+    box-shadow: inset 0 1px 0 rgba(52, 211, 153, 0.15);
   }
 
-  .hero-card--warn {
-    @apply border-brand/25 bg-brand/8;
-  }
-
-  .hero-card--info {
-    @apply border-line bg-panel/60;
-  }
-
-  .btn-play {
-    @apply relative overflow-hidden rounded-xl bg-gradient-to-b from-brand to-brand-dim py-3.5 text-center text-base font-bold tracking-wide text-white shadow-play transition duration-150 hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-800 disabled:text-gray-400 disabled:shadow-none;
-  }
-
-  .btn-play::after {
-    content: "";
-    @apply pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent;
-  }
-
-  .btn-play-running {
-    @apply btn-play disabled:from-emerald-900/40 disabled:to-emerald-950/60 disabled:text-emerald-300/90;
+  .play-btn-shine {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      transparent 48%
+    );
   }
 
   .input-field {

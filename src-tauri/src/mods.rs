@@ -1,5 +1,7 @@
 use crate::config::LauncherConfig;
+use crate::download_control::DownloadControl;
 use futures_util::StreamExt;
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -353,6 +355,76 @@ pub fn remove_mods_not_in_manifest(
     Ok(removed)
 }
 
+/// Удалить с диска папки и маркеры одной записи манифеста.
+pub fn clear_mod_entry_files(mods_dir: &Path, entry: &ModManifestEntry) -> Result<(), String> {
+    for folder in entry.folder_names() {
+        let folder_path = mods_dir.join(&folder);
+        if folder_path.is_dir() {
+            fs::remove_dir_all(&folder_path).map_err(|e| {
+                format!(
+                    "Не удалось удалить папку мода «{folder}» ({}): {e}",
+                    folder_path.display()
+                )
+            })?;
+        }
+        let marker = marker_path(mods_dir, &folder);
+        if marker.is_file() {
+            fs::remove_file(&marker).map_err(|e| {
+                format!("Не удалось удалить маркер «{folder}»: {e}")
+            })?;
+        }
+    }
+    Ok(())
+}
+
+/// Удалить мод по имени из манифеста (папки + маркеры).
+pub fn remove_manifest_mod(
+    app: &AppHandle,
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+    mod_name: &str,
+) -> Result<(), String> {
+    let entry = manifest
+        .iter()
+        .find(|e| e.name == mod_name)
+        .ok_or_else(|| format!("Мод «{mod_name}» не найден в манифесте"))?;
+
+    let mods_dir = config.mods_dir()?;
+    clear_mod_entry_files(&mods_dir, entry)?;
+    emit_log(
+        app,
+        &format!(
+            "Удалён мод «{mod_name}» ({})",
+            entry.folder_names().join(", ")
+        ),
+    );
+    Ok(())
+}
+
+/// Сбросить установку всех модов из манифеста (перед полной переустановкой).
+pub fn clear_all_manifest_mods(
+    app: &AppHandle,
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+) -> Result<usize, String> {
+    let mods_dir = config.mods_dir()?;
+    if !mods_dir.is_dir() {
+        fs::create_dir_all(&mods_dir)
+            .map_err(|e| format!("Не удалось создать папку Mods: {e}"))?;
+        return Ok(0);
+    }
+
+    for entry in manifest {
+        clear_mod_entry_files(&mods_dir, entry)?;
+    }
+
+    emit_log(
+        app,
+        &format!("Сброшено {} мод(ов) — начинается загрузка…", manifest.len()),
+    );
+    Ok(manifest.len())
+}
+
 /// Проверить наличие модов и соответствие SHA256 маркерным файлам.
 pub fn check_mods_internal(
     config: &LauncherConfig,
@@ -464,6 +536,7 @@ pub async fn download_and_install_mods_internal(
     app: AppHandle,
     config: LauncherConfig,
     manifest: Vec<ModManifestEntry>,
+    control: Arc<DownloadControl>,
 ) -> Result<String, String> {
     let mods_dir = config.mods_dir()?;
     fs::create_dir_all(&mods_dir).map_err(|e| format!("Не удалось создать папку Mods: {e}"))?;
@@ -478,20 +551,31 @@ pub async fn download_and_install_mods_internal(
 
     let total = manifest.len();
     for (index, entry) in manifest.iter().enumerate() {
+        control.wait_until_running().await?;
+
         emit_log(
             &app,
             &format!("[{}/{}] Загрузка мода «{}»…", index + 1, total, entry.name),
         );
 
         if entry.is_folder() {
-            install_folder_mod(&app, &client, entry, &mods_dir, index, total).await?;
+            install_folder_mod(&app, &client, entry, &mods_dir, index, total, &control).await?;
         } else {
             let url = entry
                 .url
                 .as_deref()
                 .ok_or_else(|| format!("мод «{}»: нет url", entry.name))?;
-            let zip_bytes =
-                download_with_progress(&app, &client, url, &entry.name, index, total, false).await?;
+            let zip_bytes = download_with_progress(
+                &app,
+                &client,
+                url,
+                &entry.name,
+                index,
+                total,
+                false,
+                &control,
+            )
+            .await?;
 
             let actual_hash = sha256_hex(&zip_bytes);
             let expected = entry.fingerprint();
@@ -605,6 +689,7 @@ async fn download_with_progress(
     mod_index: usize,
     mod_total: usize,
     is_file: bool,
+    control: &DownloadControl,
 ) -> Result<Vec<u8>, String> {
     let resolved = resolve_download_url(client, url).await?;
     if !is_file {
@@ -630,6 +715,8 @@ async fn download_with_progress(
     let mut last_downloaded: u64 = 0;
 
     while let Some(chunk) = stream.next().await {
+        control.wait_until_running().await?;
+
         let chunk = chunk.map_err(|e| format!("Ошибка чтения потока: {e}"))?;
         downloaded += chunk.len() as u64;
         buffer.extend_from_slice(&chunk);
@@ -717,6 +804,7 @@ async fn install_folder_mod(
     mods_dir: &Path,
     mod_index: usize,
     mod_total: usize,
+    control: &DownloadControl,
 ) -> Result<(), String> {
     let base_url = entry
         .base_url
@@ -747,6 +835,8 @@ async fn install_folder_mod(
         .map_err(|e| format!("Некорректная папка мода {}: {e}", mod_root.display()))?;
 
     for (file_idx, file) in entry.files.iter().enumerate() {
+        control.wait_until_running().await?;
+
         let url = join_download_url(base_url, &file.path);
         let label = format!("{} ({}/{})", entry.name, file_idx + 1, file_total);
         let bytes = download_with_progress(
@@ -757,6 +847,7 @@ async fn install_folder_mod(
             mod_index,
             mod_total,
             true,
+            control,
         )
         .await?;
 

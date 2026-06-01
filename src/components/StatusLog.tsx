@@ -4,16 +4,16 @@ interface StatusLogProps {
   logs: string[];
   onClear?: () => void;
   onExport?: () => void;
-  embedded?: boolean;
   className?: string;
+  hideHeader?: boolean;
 }
 
 export function StatusLog({
   logs,
   onClear,
   onExport,
-  embedded = false,
   className = "",
+  hideHeader = false,
 }: StatusLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -22,38 +22,64 @@ export function StatusLog({
     if (el) el.scrollTop = el.scrollHeight;
   }, [logs]);
 
-  const body = (
-    <>
-      {(onClear || onExport) && logs.length > 0 && (
-        <div className="flex justify-end gap-2 border-b border-line px-3 py-2">
-          {onExport && (
-            <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onExport}>
-              Сохранить
-            </button>
-          )}
-          {onClear && (
-            <button type="button" className="btn-soft px-2 py-1 text-xs" onClick={onClear}>
-              Очистить
-            </button>
-          )}
+  return (
+    <section
+      className={`flex min-h-0 flex-col overflow-hidden ${
+        hideHeader ? className : `panel h-full p-0 ${className}`
+      }`}
+    >
+      {!hideHeader && (
+        <div className="flex shrink-0 items-center justify-between gap-1 border-b border-line px-4 py-2.5">
+          <div className="min-w-0">
+            <p className="panel-title">Журнал</p>
+            <p className="text-[10px] text-gray-600">{logs.length} записей</p>
+          </div>
+          <div className="flex shrink-0 gap-1">
+            {onExport && logs.length > 0 && (
+              <button
+                type="button"
+                className="btn-soft px-2.5 py-1 text-xs"
+                onClick={onExport}
+                title="Сохранить в файл"
+              >
+                Сохранить
+              </button>
+            )}
+            {onClear && logs.length > 0 && (
+              <button
+                type="button"
+                className="btn-soft px-2.5 py-1 text-xs"
+                onClick={onClear}
+                title="Очистить"
+              >
+                Очистить
+              </button>
+            )}
+          </div>
         </div>
       )}
       <div
         ref={scrollRef}
-        className={`scroll-area overflow-y-auto font-mono text-xs leading-relaxed ${
-          embedded ? "max-h-48 p-3" : "flex-1 p-3"
+        className={`scroll-area min-h-0 flex-1 overflow-y-auto bg-void/50 p-4 font-mono text-[11px] leading-relaxed ${
+          hideHeader ? "panel rounded-xl" : ""
         }`}
       >
         {logs.length === 0 ? (
-          <span className="text-gray-600">Пока пусто</span>
+          <p className="text-gray-600">
+            Здесь появятся события: проверка модов, загрузка, запуск игры…
+          </p>
         ) : (
           logs.map((line, i) => (
             <div
               key={`${i}-${line.slice(0, 24)}`}
-              className={`mb-1 whitespace-pre-wrap break-all ${
+              className={`mb-1.5 whitespace-pre-wrap break-all rounded-md border-l-2 py-0.5 pl-2.5 ${
                 line.includes("Ошибка") || line.includes("⚠")
-                  ? "text-brand/90"
-                  : "text-gray-500"
+                  ? "border-brand/80 text-emerald-100/90"
+                  : line.includes("Готово") ||
+                      line.includes("актуальны") ||
+                      line.includes("установлен")
+                    ? "border-mint/60 text-gray-300"
+                    : "border-transparent text-gray-500"
               }`}
             >
               {line}
@@ -61,14 +87,6 @@ export function StatusLog({
           ))
         )}
       </div>
-    </>
-  );
-
-  if (embedded) return <div className={className}>{body}</div>;
-
-  return (
-    <section className={`panel flex min-h-0 flex-col overflow-hidden p-0 ${className}`}>
-      {body}
     </section>
   );
 }

@@ -1,17 +1,34 @@
 import type { ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { APP_VERSION } from "../constants";
 
-export type AppView = "main" | "mods" | "settings";
+export type AppView = "main" | "mods" | "log" | "settings";
 
-export function CustomTitlebar() {
+interface CustomTitlebarProps {
+  modsBadge?: number;
+}
+
+export function CustomTitlebar({ modsBadge: _modsBadge }: CustomTitlebarProps) {
   const win = getCurrentWindow();
 
   return (
-    <div
-      data-tauri-drag-region
-      className="titlebar flex h-9 shrink-0 items-center justify-end border-b border-line bg-void/80 backdrop-blur-md"
-    >
-      <div className="flex h-9 items-center">
+    <div className="titlebar flex h-10 shrink-0 select-none items-center justify-between border-b border-line bg-void/90 backdrop-blur-md">
+      <div data-tauri-drag-region className="flex min-w-0 items-center gap-2.5 pl-3.5">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-brand/30 to-brand-dim/20 ring-1 ring-brand/25">
+          <span className="text-[10px] font-black text-brand">7</span>
+        </div>
+        <span data-tauri-drag-region className="truncate text-sm font-semibold text-gray-300">
+          Fans Launcher
+        </span>
+        <span
+          data-tauri-drag-region
+          className="rounded bg-panel-raised/80 px-1.5 py-0.5 font-mono text-[10px] text-gray-500"
+        >
+          v{APP_VERSION}
+        </span>
+      </div>
+
+      <div className="flex h-10 items-center pr-1">
         <WinButton label="Свернуть" onClick={() => void win.minimize()}>
           <MinimizeIcon />
         </WinButton>
@@ -79,7 +96,7 @@ function WinButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className={`flex h-9 w-11 shrink-0 items-center justify-center text-gray-400 transition hover:bg-white/5 hover:text-white ${
+      className={`flex h-10 w-10 shrink-0 items-center justify-center text-gray-400 transition hover:bg-white/5 hover:text-white ${
         danger ? "hover:bg-red-600 hover:text-white" : ""
       }`}
     >
