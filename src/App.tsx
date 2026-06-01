@@ -4,6 +4,7 @@ import { AppSidebar } from "./components/AppSidebar";
 import { CustomTitlebar, type AppView } from "./components/CustomTitlebar";
 import { MainView } from "./components/MainView";
 import { ModsView } from "./components/ModsView";
+import { LogView } from "./components/LogView";
 import { SettingsView } from "./components/SettingsView";
 import { useLauncher } from "./hooks/useLauncher";
 import { modStatuses } from "./utils/mods";
@@ -17,6 +18,8 @@ export default function App() {
     launchGame,
     retryMods,
     installMissingMods,
+    removeMod,
+    reinstallAllMods,
     refreshModsCheck,
     openGameFolder,
     openModsFolder,
@@ -53,7 +56,7 @@ export default function App() {
     }
   }, [busy, needsModsInstall, state.modCheck, state.phase]);
 
-  const showFooter = view === "main" || view === "mods";
+  const showFooter = view === "mods";
   const footerMode = view === "mods" ? "mods" : "main";
 
   const playBlocked = !state.isReady || pendingInstall > 0;
@@ -77,9 +80,6 @@ export default function App() {
           modsBadge={missingModsCount > 0 ? missingModsCount : undefined}
           isReady={state.isReady}
           pendingInstall={pendingInstall}
-          logs={state.logs}
-          onClearLogs={clearLogs}
-          onExportLogs={() => void exportLogs()}
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -101,8 +101,18 @@ export default function App() {
             showProgress={showProgress || showCheckingBar}
             showCheckingBar={showCheckingBar}
             downloadProgress={state.downloadProgress}
+            playBlocked={playBlocked}
+            playBlockHint={playBlockHint}
+            showInstall={needsModsInstall}
+            missingModsCount={missingModsCount}
             onGoToMods={() => setView("mods")}
+            onNavigate={setView}
             onSelectFolder={() => void selectFolder()}
+            onPlay={() => void launchGame()}
+            onRetry={retryMods}
+            onInstall={() => void installMissingMods()}
+            onOpenGameFolder={() => void openGameFolder()}
+            onOpenModsFolder={() => void openModsFolder()}
           />
         )}
 
@@ -118,6 +128,16 @@ export default function App() {
             pendingInstall={pendingInstall}
             onRefresh={refreshModsCheck}
             onOpenModsFolder={() => void openModsFolder()}
+            onRemoveMod={(name) => void removeMod(name)}
+            onReinstallAll={() => void reinstallAllMods()}
+          />
+        )}
+
+        {view === "log" && (
+          <LogView
+            logs={state.logs}
+            onClear={clearLogs}
+            onExport={() => void exportLogs()}
           />
         )}
 
@@ -149,7 +169,6 @@ export default function App() {
           gameRunning={state.gameRunning}
           loading={busy}
           loadingLabel={state.isDownloading ? "Загрузка…" : "Проверка…"}
-          showRetry={!state.isReady && !busy && state.gameDir !== null}
           showInstall={needsModsInstall}
           installLabel={
             pendingInstall > 0
@@ -157,7 +176,6 @@ export default function App() {
               : "⬇  Установить моды"
           }
           onPlay={() => void launchGame()}
-          onRetry={retryMods}
           onInstall={() => void installMissingMods()}
         />
       )}

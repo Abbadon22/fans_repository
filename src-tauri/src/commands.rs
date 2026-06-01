@@ -3,8 +3,9 @@ use crate::process_util::is_7dtd_running;
 #[cfg(target_os = "windows")]
 use crate::process_util::platform;
 use crate::mods::{
-    check_mods_internal, download_and_install_mods_internal, entries_needing_install,
-    load_manifest, remove_mods_not_in_manifest, ManifestLoadResult, ModCheckResult,
+    check_mods_internal, clear_all_manifest_mods, download_and_install_mods_internal,
+    entries_needing_install, load_manifest, remove_manifest_mod, remove_mods_not_in_manifest,
+    ManifestLoadResult, ModCheckResult,
 };
 use std::path::Path;
 use tauri::{AppHandle, Emitter, State};
@@ -198,6 +199,77 @@ pub async fn download_and_install_mods(
         let _ = app.emit("progress", 0.0);
     } else {
         let _ = app.emit("progress", 100.0);
+    }
+
+    result
+}
+
+/// Удалить один мод с диска (папки и маркеры), затем перепроверить модпак.
+#[tauri::command]
+pub async fn remove_mod(
+    mod_name: String,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ModCheckResult, String> {
+    let config = state.config.lock().await.clone();
+    config.game_dir_path()?;
+
+    let loaded = load_manifest(&app, &config).await?;
+    remove_manifest_mod(&app, &config, &loaded.entries, mod_name.trim())?;
+
+    let removed = remove_mods_not_in_manifest(&app, &config, &loaded.entries)?;
+    let mut result = check_mods_internal(&config, &loaded.entries);
+    result.removed = removed;
+
+    if result.ok {
+        emit_log(&app, "После удаления: модпак в порядке.");
+    } else {
+        emit_log(
+            &app,
+            &format!(
+                "После удаления: к установке {} мод(ов)",
+                result.pending_install
+            ),
+        );
+    }
+
+    Ok(result)
+}
+
+/// Удалить все моды манифеста с диска и скачать заново.
+#[tauri::command]
+pub async fn reinstall_all_mods(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let config = state.config.lock().await.clone();
+    config.game_dir_path()?;
+    config.validate_game_exe()?;
+
+    let loaded = load_manifest(&app, &config).await?;
+    if loaded.entries.is_empty() {
+        return Err("Манифест пуст — нечего переустанавливать".to_string());
+    }
+
+    emit_log(
+        &app,
+        &format!(
+            "Полная переустановка модпака ({} модов)…",
+            loaded.entries.len()
+        ),
+    );
+
+    clear_all_manifest_mods(&app, &config, &loaded.entries)?;
+
+    let result =
+        download_and_install_mods_internal(app.clone(), config, loaded.entries).await;
+
+    if let Err(ref e) = result {
+        emit_log(&app, &format!("Ошибка переустановки: {e}"));
+        let _ = app.emit("progress", 0.0);
+    } else {
+        let _ = app.emit("progress", 100.0);
+        emit_log(&app, "Переустановка модпака завершена.");
     }
 
     result

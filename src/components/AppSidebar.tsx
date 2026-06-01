@@ -1,4 +1,3 @@
-import { StatusLog } from "./StatusLog";
 import type { AppView } from "./CustomTitlebar";
 
 interface AppSidebarProps {
@@ -7,14 +6,12 @@ interface AppSidebarProps {
   modsBadge?: number;
   isReady: boolean;
   pendingInstall: number;
-  logs: string[];
-  onClearLogs: () => void;
-  onExportLogs: () => void;
 }
 
 const NAV: { id: AppView; label: string; icon: string }[] = [
   { id: "main", label: "Главная", icon: "⌂" },
   { id: "mods", label: "Моды", icon: "◫" },
+  { id: "log", label: "Журнал", icon: "≡" },
   { id: "settings", label: "Настройки", icon: "⚙" },
 ];
 
@@ -24,12 +21,9 @@ export function AppSidebar({
   modsBadge,
   isReady,
   pendingInstall,
-  logs,
-  onClearLogs,
-  onExportLogs,
 }: AppSidebarProps) {
   return (
-    <aside className="flex w-[272px] shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-xl">
+    <aside className="flex w-[220px] shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur-xl">
       <div className="shrink-0 border-b border-line px-4 py-3.5">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand/90">
           Fans Group
@@ -64,13 +58,6 @@ export function AppSidebar({
           />
         ))}
       </nav>
-
-      <StatusLog
-        logs={logs}
-        onClear={onClearLogs}
-        onExport={onExportLogs}
-        variant="sidebar"
-      />
     </aside>
   );
 }

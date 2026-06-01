@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { APP_VERSION } from "../constants";
 
-export type AppView = "main" | "mods" | "settings";
+export type AppView = "main" | "mods" | "log" | "settings";
 
 interface CustomTitlebarProps {
   modsBadge?: number;

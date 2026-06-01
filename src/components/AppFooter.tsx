@@ -9,11 +9,9 @@ interface AppFooterProps {
   loading: boolean;
   gameRunning: boolean;
   loadingLabel: string;
-  showRetry: boolean;
   showInstall: boolean;
   installLabel?: string;
   onPlay: () => void;
-  onRetry: () => void;
   onInstall: () => void;
 }
 
@@ -24,15 +22,13 @@ export function AppFooter({
   loading,
   gameRunning,
   loadingLabel,
-  showRetry,
   showInstall,
   installLabel = "⬇  Установить моды",
   onPlay,
-  onRetry,
   onInstall,
 }: AppFooterProps) {
   return (
-    <footer className="shrink-0 border-t border-line bg-gradient-to-t from-panel to-panel/80 px-6 py-4 backdrop-blur-md">
+    <footer className="shrink-0 border-t border-line bg-panel/95 px-5 py-3">
       <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
         {mode === "mods" && showInstall && (
           <button
@@ -53,20 +49,12 @@ export function AppFooter({
             loading={loading}
             gameRunning={gameRunning}
             loadingLabel={loadingLabel}
+            ready={!disabled && !loading && !gameRunning}
             onPlay={onPlay}
-            onRetry={mode === "main" ? onRetry : undefined}
-            showRetry={mode === "main" && showRetry}
+            showRetry={false}
           />
         </div>
       </div>
-      {mode === "main" && playBlockHint && !loading && (
-        <p className="mt-2 text-center text-xs text-brand/80">{playBlockHint}</p>
-      )}
-      {mode === "main" && !disabled && !loading && !gameRunning && !playBlockHint && (
-        <p className="mt-2 text-center text-xs text-gray-600">
-          После запуска Steam подключит к серверу (можно отключить в настройках)
-        </p>
-      )}
     </footer>
   );
 }

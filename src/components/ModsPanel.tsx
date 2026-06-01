@@ -10,6 +10,8 @@ interface ModsPanelProps {
   busy: boolean;
   onRefresh: () => void;
   onOpenModsFolder?: () => void;
+  onRemoveMod?: (modName: string) => void;
+  onReinstallAll?: () => void;
   hideHeader?: boolean;
 }
 
@@ -21,6 +23,8 @@ export function ModsPanel({
   busy,
   onRefresh,
   onOpenModsFolder,
+  onRemoveMod,
+  onReinstallAll,
   hideHeader = false,
 }: ModsPanelProps) {
   const [query, setQuery] = useState("");
@@ -65,7 +69,25 @@ export function ModsPanel({
               </p>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {onReinstallAll && manifest.length > 0 && (
+              <button
+                type="button"
+                className="btn-soft border-amber-500/30 text-amber-200/90"
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Переустановить все ${manifest.length} мод(ов)?\n\nПапки модов будут удалены и скачаны заново.`,
+                    )
+                  ) {
+                    onReinstallAll();
+                  }
+                }}
+              >
+                Переустановить все
+              </button>
+            )}
             <button type="button" className="btn-soft" disabled={busy} onClick={onRefresh}>
               {busy ? "…" : "Обновить"}
             </button>
@@ -183,7 +205,29 @@ export function ModsPanel({
                       <p className="mt-1.5 text-xs text-emerald-200/70">{item.detail}</p>
                     )}
                   </div>
-                  <StatusPill status={item.status} />
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <StatusPill status={item.status} />
+                    {onRemoveMod && (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-line px-2 py-1 text-[10px] font-medium text-gray-500 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                        disabled={busy}
+                        title="Удалить мод с диска"
+                        onClick={() => {
+                          const folders = item.folders.join(", ");
+                          if (
+                            window.confirm(
+                              `Удалить «${item.name}»?\n\nБудут удалены папки: ${folders}`,
+                            )
+                          ) {
+                            onRemoveMod(item.name);
+                          }
+                        }}
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </div>
                 </div>
               </li>
             ))

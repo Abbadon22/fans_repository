@@ -19,8 +19,8 @@ interface MainHeroProps {
 }
 
 const STEPS: { id: MainStepId; label: string; hint: string }[] = [
-  { id: "folder", label: "Папка игры", hint: "7DaysToDie.exe" },
-  { id: "mods", label: "Модпак", hint: "Проверка и установка" },
+  { id: "folder", label: "Папка игры", hint: "Каталог с 7DaysToDie.exe" },
+  { id: "mods", label: "Модпак", hint: "Список сервера Fans" },
   { id: "play", label: "Запуск", hint: "Кнопка «Играть» внизу" },
 ];
 
@@ -33,6 +33,10 @@ function activeStep(
   if (!hasFolder) return "folder";
   if (busy || pendingInstall > 0 || !isReady) return "mods";
   return "play";
+}
+
+function stepIndex(id: MainStepId): number {
+  return STEPS.findIndex((s) => s.id === id);
 }
 
 export function MainHero({
@@ -50,198 +54,268 @@ export function MainHero({
   onGoToMods,
 }: MainHeroProps) {
   const current = activeStep(hasFolder, isReady, busy, pendingInstall);
+  const currentIdx = stepIndex(current);
   const modPercent =
     manifestCount > 0 ? Math.round((modOkCount / manifestCount) * 100) : 0;
 
   const headline = gameRunning
     ? "Игра запущена"
     : isReady
-      ? "Готово к запуску"
+      ? "Всё готово — можно играть"
       : busy
         ? status
         : !hasFolder
-          ? "Настройка лаунчера"
+          ? "Добро пожаловать"
           : pendingInstall > 0
-            ? "Нужны моды"
-            : "Почти готово";
+            ? "Осталось установить моды"
+            : "Завершите проверку модпака";
 
   const subline = gameRunning
-    ? "Закройте игру, чтобы снова использовать лаунчер"
+    ? "Закройте игру, чтобы снова запустить лаунчер"
     : isReady
-      ? "Нажмите «Играть» внизу — Steam подключит к серверу"
+      ? "Всё настроено — запуск внизу"
       : !hasFolder
-        ? "Укажите папку Steam с установленной 7 Days to Die"
+        ? "Папка Steam с 7 Days to Die"
         : pendingInstall > 0
-          ? `${pendingInstall} мод(ов) ожидают загрузки · ${modOkCount} из ${manifestCount} уже на месте`
-          : hasFolder
-            ? "Откройте вкладку «Моды» и завершите проверку"
-            : status;
+          ? `${modOkCount} из ${manifestCount} · осталось ${pendingInstall}`
+          : "Вкладка «Моды» или «Повторить»";
+
+  const onStepClick = (id: MainStepId) => {
+    if (id === "folder") onSelectFolder();
+    else if (id === "mods") onGoToMods();
+  };
+
+  const checks = [
+    {
+      done: hasFolder,
+      title: "Папка с игрой",
+      detail: hasFolder ? "Указана" : "Не выбрана",
+      action: !hasFolder ? "Выбрать" : "Сменить",
+      onClick: onSelectFolder,
+    },
+    {
+      done: hasFolder && isReady && pendingInstall === 0,
+      title: "Модпак сервера",
+      detail:
+        manifestCount > 0
+          ? `${modOkCount} / ${manifestCount}${pendingInstall > 0 ? ` (+${pendingInstall})` : ""}`
+          : "—",
+      action: "Открыть",
+      onClick: onGoToMods,
+    },
+    {
+      done: isReady && !gameRunning,
+      title: "Готов к запуску",
+      detail: isReady ? "Да" : gameRunning ? "Игра открыта" : "Нет",
+      action: null,
+      onClick: undefined,
+    },
+  ];
 
   return (
-    <section className="panel relative overflow-hidden p-0">
+    <section className="panel relative flex min-h-0 flex-1 flex-col overflow-hidden p-0">
       <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand/15 via-transparent to-sky/5"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_0%_0%,rgba(16,185,129,0.14),transparent_55%)]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand/10 blur-3xl"
+        className="pointer-events-none absolute inset-0 bg-grid-fade bg-grid opacity-40"
         aria-hidden
       />
 
-      <div className="relative grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge phase={phase} />
-            {isReady && !gameRunning && (
-              <span className="text-xs font-medium text-mint">Все проверки пройдены</span>
-            )}
-          </div>
-
-          <div className="flex items-start gap-4">
-            <ReadinessOrb
-              ready={isReady && !gameRunning}
-              active={busy}
-              warn={!isReady && !busy && !gameRunning}
-              running={gameRunning}
-            />
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold tracking-tight text-white">{headline}</h1>
-              <p className="mt-1.5 text-sm leading-relaxed text-gray-400">{subline}</p>
-              {gameDir && (
-                <p
-                  className="mt-2 truncate font-mono text-[11px] text-gray-600"
-                  title={gameDir}
-                >
-                  {gameDir}
-                </p>
-              )}
+      <div className="relative flex min-h-0 flex-1 flex-col gap-3 p-4">
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/20 ring-1 ring-brand/30">
+              <span className="text-sm font-black text-brand">7</span>
             </div>
-          </div>
-
-          {manifestCount > 0 && hasFolder && (
             <div>
-              <div className="mb-1.5 flex justify-between text-[11px] font-medium text-gray-500">
-                <span>Модпак сервера</span>
-                <span className="tabular-nums text-gray-400">
-                  {modOkCount} / {manifestCount}
-                  {pendingInstall > 0 && (
-                    <span className="text-brand"> · +{pendingInstall} к загрузке</span>
-                  )}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-void">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand-dim to-mint transition-all duration-500"
-                  style={{ width: `${modPercent}%` }}
-                />
-              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand/90">
+                Fans Group
+              </p>
+              <p className="text-xs font-semibold text-white">7 Days to Die</p>
             </div>
-          )}
+          </div>
+          <StatusBadge phase={phase} />
+        </div>
 
-          <div className="flex flex-wrap gap-2">
-            {!hasFolder && (
-              <button type="button" className="btn-soft border-brand/40 bg-brand/15 text-brand" onClick={onSelectFolder}>
-                Выбрать папку игры
-              </button>
-            )}
-            {hasFolder && pendingInstall > 0 && !busy && (
-              <button type="button" className="btn-soft border-brand/40 bg-brand/15 text-brand" onClick={onGoToMods}>
-                Установить {pendingInstall} мод(ов)
-              </button>
-            )}
-            {hasFolder && !isReady && !busy && pendingInstall === 0 && (
-              <button type="button" className="btn-soft" onClick={onGoToMods}>
-                Открыть моды
-              </button>
-            )}
-            {hasFolder && gameDir && (
-              <button type="button" className="btn-soft" onClick={onSelectFolder}>
-                Сменить папку
+        <div className="flex shrink-0 items-start gap-3">
+          <ReadinessRing
+            percent={hasFolder ? modPercent : 0}
+            ready={isReady && !gameRunning}
+            active={busy}
+            running={gameRunning}
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold leading-tight text-white">{headline}</h1>
+            <p className="mt-1 text-xs leading-relaxed text-gray-400">{subline}</p>
+            {gameDir && (
+              <button
+                type="button"
+                className="mt-1.5 block max-w-full truncate text-left font-mono text-[10px] text-gray-600 hover:text-brand"
+                title={gameDir}
+                onClick={onSelectFolder}
+              >
+                {gameDir}
               </button>
             )}
           </div>
         </div>
 
-        <ol className="flex gap-2 lg:flex-col lg:gap-1.5 lg:pt-1">
-          {STEPS.map((step, index) => {
-            const stepIndex = STEPS.findIndex((s) => s.id === current);
-            const done = index < stepIndex;
-            const currentStep = index === stepIndex;
-            return (
+        <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-line bg-void/50 p-2.5">
+          <p className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+            Проверки
+          </p>
+          <ul className="flex min-h-0 flex-1 flex-col justify-center gap-2">
+            {checks.map((item) => (
               <li
-                key={step.id}
-                className={`flex min-w-[100px] flex-1 flex-col rounded-xl border px-3 py-2.5 transition lg:min-w-[168px] lg:flex-none ${
-                  done
-                    ? "border-mint/25 bg-mint/5"
-                    : currentStep
-                      ? "border-brand/35 bg-brand/10 ring-1 ring-brand/20"
-                      : "border-line bg-void/40 opacity-60"
+                key={item.title}
+                className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 ${
+                  item.done ? "border-mint/20 bg-mint/5" : "border-line bg-panel/40"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                      done
-                        ? "bg-mint/20 text-mint"
-                        : currentStep
-                          ? "bg-brand/25 text-brand"
-                          : "bg-panel-raised text-gray-600"
-                    }`}
-                  >
-                    {done ? "✓" : index + 1}
-                  </span>
-                  <span
-                    className={`text-sm font-semibold ${currentStep ? "text-white" : "text-gray-400"}`}
-                  >
-                    {step.label}
-                  </span>
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                    item.done ? "bg-mint/20 text-mint" : "bg-panel-raised text-gray-600"
+                  }`}
+                >
+                  {item.done ? "✓" : "·"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-gray-200">{item.title}</p>
+                  <p className="text-[10px] text-gray-500">{item.detail}</p>
                 </div>
-                <p className="mt-1 pl-8 text-[10px] text-gray-500">{step.hint}</p>
+                {item.action && item.onClick && (
+                  <button
+                    type="button"
+                    className="btn-soft shrink-0 px-2 py-1 text-[10px]"
+                    onClick={item.onClick}
+                  >
+                    {item.action}
+                  </button>
+                )}
               </li>
-            );
-          })}
-        </ol>
+            ))}
+          </ul>
+        </div>
+
+        {hasFolder && manifestCount > 0 && (
+          <div className="shrink-0">
+            <div className="mb-1 flex justify-between text-[10px] font-medium text-gray-500">
+              <span>Модпак</span>
+              <span className="tabular-nums text-gray-400">
+                {modOkCount} / {manifestCount}
+                {pendingInstall > 0 && <span className="text-brand"> · +{pendingInstall}</span>}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-void">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-brand-dim to-mint transition-all duration-500"
+                style={{ width: `${modPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        <nav className="shrink-0" aria-label="Шаги">
+          <ol className="grid grid-cols-3 gap-2">
+            {STEPS.map((step, index) => {
+              const done = index < currentIdx;
+              const currentStep = index === currentIdx;
+              const clickable = step.id === "folder" || step.id === "mods";
+
+              return (
+                <li key={step.id} className="min-w-0">
+                  <button
+                    type="button"
+                    disabled={!clickable && !done}
+                    onClick={() => clickable && onStepClick(step.id)}
+                    className={`flex h-full w-full flex-col rounded-xl border px-2 py-2 text-left transition ${
+                      done
+                        ? "border-mint/30 bg-mint/5 hover:border-mint/45"
+                        : currentStep
+                          ? "border-brand/40 bg-brand/10 ring-1 ring-brand/20"
+                          : "border-line bg-void/30 opacity-75"
+                    } ${clickable || done ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold ${
+                          done
+                            ? "bg-mint/25 text-mint"
+                            : currentStep
+                              ? "bg-brand/25 text-brand"
+                              : "bg-panel-raised text-gray-600"
+                        }`}
+                      >
+                        {done ? "✓" : index + 1}
+                      </span>
+                      <span
+                        className={`truncate text-xs font-semibold ${currentStep ? "text-white" : "text-gray-400"}`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 pl-[1.625rem] text-[9px] leading-tight text-gray-500">
+                      {step.hint}
+                    </p>
+                    {currentStep && !done && (
+                      <p className="mt-0.5 pl-[1.625rem] text-[9px] font-medium text-brand">Сейчас</p>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
       </div>
     </section>
   );
 }
 
-function ReadinessOrb({
+function ReadinessRing({
+  percent,
   ready,
   active,
-  warn,
   running,
 }: {
+  percent: number;
   ready: boolean;
   active: boolean;
-  warn: boolean;
   running: boolean;
 }) {
-  const ring = running
-    ? "from-emerald-400/40 to-brand/30"
-    : ready
-      ? "from-mint/50 to-brand/40"
-      : active
-        ? "from-sky/40 to-brand/30"
-        : warn
-          ? "from-brand/40 to-amber-500/20"
-          : "from-gray-600/30 to-gray-700/20";
-
-  const icon = running ? "●" : ready ? "✓" : active ? "…" : "!";
+  const r = 34;
+  const c = 2 * Math.PI * r;
+  const offset = c - (Math.min(100, Math.max(0, percent)) / 100) * c;
+  const stroke = running || ready ? "#34d399" : active ? "#38bdf8" : "#10b981";
 
   return (
-    <div
-      className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${ring} ring-2 ring-white/10`}
-      aria-hidden
-    >
-      <span
-        className={`text-xl font-black ${ready || running ? "text-white" : active ? "text-sky animate-pulse" : "text-brand"}`}
+    <div className="relative flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center">
+      <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden>
+        <circle cx="50" cy="50" r={r} fill="none" className="stroke-void" strokeWidth="6" />
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div
+        className={`relative flex h-12 w-12 flex-col items-center justify-center rounded-xl ring-1 ring-white/10 ${
+          ready || running
+            ? "bg-gradient-to-br from-mint/25 to-brand/15"
+            : "bg-gradient-to-br from-panel-raised to-void/80"
+        }`}
       >
-        {icon}
-      </span>
-      {active && (
-        <span className="absolute inset-0 animate-pulse rounded-2xl ring-2 ring-brand/40" />
-      )}
+        <span className="text-sm font-black text-white">
+          {running ? "●" : ready ? "✓" : `${percent}%`}
+        </span>
+      </div>
     </div>
   );
 }

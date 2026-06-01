@@ -16,6 +16,8 @@ interface ModsViewProps {
   pendingInstall: number;
   onRefresh: () => void;
   onOpenModsFolder: () => void;
+  onRemoveMod: (modName: string) => void;
+  onReinstallAll: () => void;
 }
 
 export function ModsView({
@@ -29,6 +31,8 @@ export function ModsView({
   pendingInstall,
   onRefresh,
   onOpenModsFolder,
+  onRemoveMod,
+  onReinstallAll,
 }: ModsViewProps) {
   const items = modStatuses(manifest, modCheck);
   const okCount = items.filter((i) => i.status === "ok").length;
@@ -45,9 +49,27 @@ export function ModsView({
         title="Модпак сервера"
         subtitle={subtitle}
         action={
-          <button type="button" className="btn-soft" disabled={busy} onClick={onRefresh}>
-            {busy ? "Проверка…" : "Обновить список"}
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              className="btn-soft border-amber-500/30 text-amber-200/90"
+              disabled={busy || manifest.length === 0}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Переустановить все ${manifest.length} мод(ов)?\n\nТекущие файлы будут удалены и скачаны заново.`,
+                  )
+                ) {
+                  onReinstallAll();
+                }
+              }}
+            >
+              Переустановить все
+            </button>
+            <button type="button" className="btn-soft" disabled={busy} onClick={onRefresh}>
+              {busy ? "Проверка…" : "Обновить"}
+            </button>
+          </div>
         }
       />
 
@@ -70,6 +92,8 @@ export function ModsView({
           busy={busy}
           onRefresh={onRefresh}
           onOpenModsFolder={onOpenModsFolder}
+          onRemoveMod={onRemoveMod}
+          onReinstallAll={onReinstallAll}
           hideHeader
         />
       </div>

@@ -29,6 +29,8 @@ pub fn run() {
             commands::reveal_path,
             commands::check_mods,
             commands::download_and_install_mods,
+            commands::remove_mod,
+            commands::reinstall_all_mods,
             commands::launch_game,
             commands::is_game_running,
             commands::get_steam_connect_url,

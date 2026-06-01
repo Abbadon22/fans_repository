@@ -1,7 +1,10 @@
 import { AlertBanner } from "./AlertBanner";
 import { MainHero } from "./MainHero";
+import { MainPlayBar } from "./MainPlayBar";
+import { MainQuickActions } from "./MainQuickActions";
 import { ProgressBar } from "./ProgressBar";
 import { ServerCard } from "./ServerCard";
+import type { AppView } from "./CustomTitlebar";
 import type { LauncherConfig, LauncherPhase, ModCheckResult } from "../types";
 import type { DownloadProgress } from "../types";
 
@@ -22,8 +25,18 @@ interface MainViewProps {
   showProgress: boolean;
   showCheckingBar: boolean;
   downloadProgress: DownloadProgress | null;
+  playBlocked: boolean;
+  playBlockHint?: string;
+  showInstall: boolean;
+  missingModsCount: number;
   onGoToMods: () => void;
+  onNavigate: (view: AppView) => void;
   onSelectFolder: () => void;
+  onPlay: () => void;
+  onRetry: () => void;
+  onInstall: () => void;
+  onOpenGameFolder: () => void;
+  onOpenModsFolder: () => void;
 }
 
 export function MainView({
@@ -43,50 +56,91 @@ export function MainView({
   showProgress,
   showCheckingBar,
   downloadProgress,
+  playBlocked,
+  playBlockHint,
+  showInstall,
+  missingModsCount,
   onGoToMods,
+  onNavigate,
   onSelectFolder,
+  onPlay,
+  onRetry,
+  onInstall,
+  onOpenGameFolder,
+  onOpenModsFolder,
 }: MainViewProps) {
   const okCount = modCheck?.ok ? manifestCount : manifestOkCount;
   const showRemovedBanner =
     hasFolder && removedMods.length > 0 && !busy && isReady && pendingInstall === 0;
 
+  const installLabel =
+    pendingInstall > 0 ? `Установить ${pendingInstall}` : "Установить моды";
+
   return (
-    <div className="scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-5">
-        <MainHero
-          phase={phase}
-          status={status}
-          hasFolder={hasFolder}
-          isReady={isReady}
-          gameRunning={gameRunning}
-          busy={busy}
-          manifestCount={manifestCount}
-          modOkCount={okCount}
-          pendingInstall={pendingInstall}
-          gameDir={gameDir}
-          onSelectFolder={onSelectFolder}
-          onGoToMods={onGoToMods}
-        />
-
-        {(showProgress || showCheckingBar) && (
-          <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
-        )}
-
-        {showRemovedBanner && (
-          <AlertBanner
-            variant="info"
-            title="Очистка модпака"
-            message={`Удалены папки вне списка сервера: ${removedMods.join(", ")}`}
+    <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
+      <div className="grid min-h-0 grid-cols-1 gap-3 overflow-hidden p-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
+          <MainHero
+            phase={phase}
+            status={status}
+            hasFolder={hasFolder}
+            isReady={isReady}
+            gameRunning={gameRunning}
+            busy={busy}
+            manifestCount={manifestCount}
+            modOkCount={okCount}
+            pendingInstall={pendingInstall}
+            gameDir={gameDir}
+            onSelectFolder={onSelectFolder}
+            onGoToMods={onGoToMods}
           />
-        )}
 
-        {config ? (
-          <ServerCard config={config} />
-        ) : (
-          <section className="panel flex min-h-[200px] items-center justify-center p-8 text-sm text-gray-500">
-            Загрузка настроек…
-          </section>
-        )}
+          {(showProgress || showCheckingBar) && (
+            <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
+          )}
+
+          {showRemovedBanner && (
+            <AlertBanner
+              variant="info"
+              title="Очистка"
+              message={removedMods.join(", ")}
+            />
+          )}
+        </div>
+
+        <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
+          {config ? (
+            <ServerCard config={config} className="min-h-0 flex-1" />
+          ) : (
+            <section className="panel flex flex-1 items-center justify-center text-xs text-gray-500">
+              Загрузка…
+            </section>
+          )}
+          <MainQuickActions
+            onNavigate={onNavigate}
+            onOpenGameFolder={onOpenGameFolder}
+            onOpenModsFolder={onOpenModsFolder}
+            hasFolder={hasFolder}
+            modsBadge={missingModsCount > 0 ? missingModsCount : undefined}
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-line px-4 py-3">
+        <MainPlayBar
+          disabled={playBlocked}
+          playBlockHint={playBlockHint}
+          loading={busy}
+          gameRunning={gameRunning}
+          isReady={isReady}
+          loadingLabel={showCheckingBar && !downloadProgress ? "Проверка…" : "Загрузка…"}
+          showRetry={!isReady && !busy && hasFolder}
+          showInstall={showInstall}
+          installLabel={installLabel}
+          onPlay={onPlay}
+          onRetry={onRetry}
+          onInstall={onInstall}
+        />
       </div>
     </div>
   );

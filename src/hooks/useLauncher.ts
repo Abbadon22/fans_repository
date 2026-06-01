@@ -268,6 +268,83 @@ export function useLauncher() {
     await runInstallPipeline();
   }, [runInstallPipeline]);
 
+  const removeMod = useCallback(
+    async (modName: string) => {
+      if (!state.gameDir || state.isChecking || state.isDownloading) return;
+
+      patch({ isChecking: true, status: `Удаление «${modName}»…` });
+
+      try {
+        const check = normalizeModCheck(
+          await invoke<ModCheckResult>("remove_mod", { modName }),
+        );
+        hadError.current = !check.ok;
+        patch({
+          modCheck: check,
+          isChecking: false,
+          isReady: check.ok,
+          progress: check.ok ? 100 : 0,
+          status: check.ok
+            ? "Готово к запуску"
+            : (check.pending_install ?? 0) > 0
+              ? `Нужно обновить ${check.pending_install} мод(ов)`
+              : "Проверьте моды",
+        });
+        appendLog(`Мод «${modName}» удалён`);
+      } catch (e) {
+        hadError.current = true;
+        const msg = e instanceof Error ? e.message : String(e);
+        appendLog(`Не удалось удалить мод: ${msg}`);
+        patch({ isChecking: false, status: "Ошибка удаления мода" });
+      }
+    },
+    [appendLog, patch, state.gameDir, state.isChecking, state.isDownloading],
+  );
+
+  const reinstallAllMods = useCallback(async () => {
+    if (!state.gameDir || state.isDownloading) return;
+
+    hadError.current = false;
+    patch({
+      isChecking: false,
+      isDownloading: true,
+      isReady: false,
+      downloadProgress: null,
+      status: "Переустановка всех модов…",
+    });
+    appendLog(`Полная переустановка ${state.manifest.length} мод(ов)…`);
+
+    try {
+      await invoke<string>("reinstall_all_mods");
+
+      const after = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
+      patch({
+        modCheck: after,
+        isDownloading: false,
+        isReady: after.ok,
+        progress: 100,
+        downloadProgress: null,
+        status: after.ok ? "Готово к запуску" : "Ошибка после переустановки",
+      });
+      if (after.ok) {
+        appendLog("Все моды переустановлены.");
+      } else {
+        hadError.current = true;
+        appendLog("После переустановки остались проблемы — см. список модов");
+      }
+    } catch (e) {
+      hadError.current = true;
+      const msg = e instanceof Error ? e.message : String(e);
+      appendLog(`Ошибка переустановки: ${msg}`);
+      patch({
+        isDownloading: false,
+        isReady: false,
+        downloadProgress: null,
+        status: "Ошибка переустановки",
+      });
+    }
+  }, [appendLog, patch, state.gameDir, state.isDownloading, state.manifest.length]);
+
   const retryMods = useCallback(async () => {
     const check = await runModCheckOnly();
     if (check?.pending_install && check.pending_install > 0) {
@@ -483,6 +560,8 @@ export function useLauncher() {
     launchGame,
     retryMods,
     installMissingMods,
+    removeMod,
+    reinstallAllMods,
     refreshModsCheck,
     openGameFolder,
     openModsFolder,

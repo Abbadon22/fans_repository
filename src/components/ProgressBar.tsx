@@ -12,9 +12,9 @@ export function ProgressBar({ progress, visible, checking }: ProgressBarProps) {
 
   if (checking && !progress) {
     return (
-      <div className="panel p-4">
-        <p className="mb-2 text-sm font-medium text-gray-200">Проверка модов…</p>
-        <div className="h-1.5 overflow-hidden rounded-full bg-void">
+      <div className="panel shrink-0 px-3 py-2">
+        <p className="mb-1 text-[10px] font-medium text-gray-400">Проверка модов…</p>
+        <div className="h-1 overflow-hidden rounded-full bg-void">
           <div className="h-full w-1/3 animate-pulse rounded-full bg-brand" />
         </div>
       </div>
@@ -31,7 +31,7 @@ export function ProgressBar({ progress, visible, checking }: ProgressBarProps) {
       : "";
 
   return (
-    <div className="panel space-y-3 p-4">
+    <div className="panel shrink-0 space-y-1.5 px-3 py-2">
       <div className="flex justify-between gap-2 text-xs">
         <div className="min-w-0">
           <p className="font-medium text-white">Загрузка{modStep}</p>

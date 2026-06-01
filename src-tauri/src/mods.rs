@@ -353,6 +353,76 @@ pub fn remove_mods_not_in_manifest(
     Ok(removed)
 }
 
+/// Удалить с диска папки и маркеры одной записи манифеста.
+pub fn clear_mod_entry_files(mods_dir: &Path, entry: &ModManifestEntry) -> Result<(), String> {
+    for folder in entry.folder_names() {
+        let folder_path = mods_dir.join(&folder);
+        if folder_path.is_dir() {
+            fs::remove_dir_all(&folder_path).map_err(|e| {
+                format!(
+                    "Не удалось удалить папку мода «{folder}» ({}): {e}",
+                    folder_path.display()
+                )
+            })?;
+        }
+        let marker = marker_path(mods_dir, &folder);
+        if marker.is_file() {
+            fs::remove_file(&marker).map_err(|e| {
+                format!("Не удалось удалить маркер «{folder}»: {e}")
+            })?;
+        }
+    }
+    Ok(())
+}
+
+/// Удалить мод по имени из манифеста (папки + маркеры).
+pub fn remove_manifest_mod(
+    app: &AppHandle,
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+    mod_name: &str,
+) -> Result<(), String> {
+    let entry = manifest
+        .iter()
+        .find(|e| e.name == mod_name)
+        .ok_or_else(|| format!("Мод «{mod_name}» не найден в манифесте"))?;
+
+    let mods_dir = config.mods_dir()?;
+    clear_mod_entry_files(&mods_dir, entry)?;
+    emit_log(
+        app,
+        &format!(
+            "Удалён мод «{mod_name}» ({})",
+            entry.folder_names().join(", ")
+        ),
+    );
+    Ok(())
+}
+
+/// Сбросить установку всех модов из манифеста (перед полной переустановкой).
+pub fn clear_all_manifest_mods(
+    app: &AppHandle,
+    config: &LauncherConfig,
+    manifest: &[ModManifestEntry],
+) -> Result<usize, String> {
+    let mods_dir = config.mods_dir()?;
+    if !mods_dir.is_dir() {
+        fs::create_dir_all(&mods_dir)
+            .map_err(|e| format!("Не удалось создать папку Mods: {e}"))?;
+        return Ok(0);
+    }
+
+    for entry in manifest {
+        clear_mod_entry_files(&mods_dir, entry)?;
+    }
+
+    emit_log(
+        app,
+        &format!("Сброшено {} мод(ов) — начинается загрузка…", manifest.len()),
+    );
+    Ok(manifest.len())
+}
+
 /// Проверить наличие модов и соответствие SHA256 маркерным файлам.
 pub fn check_mods_internal(
     config: &LauncherConfig,
