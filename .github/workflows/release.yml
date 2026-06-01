@@ -60,7 +60,8 @@ jobs:
             Уже стоит прошлая версия — запустите лаунчер, обновление подтянется само.
 
             ### Что нового в v__VERSION__
-            - Защита служебных модов TFP (Harmony, CommandExtensions, MapRendering, WebServer) от удаления
+            - Обязательные моды TFP в manifest.json (Harmony, CommandExtensions, MapRendering, WebServer) — автоустановка с Яндекс.Диска
+            - Защита служебных модов TFP от удаления при очистке Mods/
             - Повторы при лимите Яндекс.Диска (HTTP 429)
             - Server-only моды не скачиваются на клиент; бейджи Client/Server/Both
             - Новая иконка лаунчера; упрощённая вкладка «Моды»

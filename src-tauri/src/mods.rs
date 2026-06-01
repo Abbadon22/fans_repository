@@ -115,7 +115,7 @@ const DOWNLOAD_TIMEOUT_SECS: u64 = 300;
 const MANIFEST_FETCH_TIMEOUT_SECS: u64 = 20;
 const MARKER_DIR_NAME: &str = ".launcher-meta";
 
-/// Служебные моды сервера (Alloc / TFP) — не в manifest.json, никогда не удалять из Mods/.
+/// Служебные моды TFP — дублируют manifest.json; никогда не удалять из Mods/ при очистке.
 const PROTECTED_MOD_FOLDERS: &[&str] = &[
     "0_TFP_Harmony",
     "TFP_CommandExtensions",

@@ -1,5 +1,45 @@
 [
   {
+    "archive": "0_TFP_Harmony.zip",
+    "name": "0_TFP_Harmony",
+    "names": [
+      "0_TFP_Harmony"
+    ],
+    "url": "https://disk.yandex.ru/d/-wH1jSf9JcBHWA",
+    "sha256": "cb514fbd15cb393d33693da09e1c23e86b2b2382a3b31981abed26bceb313488",
+    "side": "both"
+  },
+  {
+    "archive": "TFP_CommandExtensions.zip",
+    "name": "TFP_CommandExtensions",
+    "names": [
+      "TFP_CommandExtensions"
+    ],
+    "url": "https://disk.yandex.ru/d/AGqQ67ETh3b8xg",
+    "sha256": "04902d1006aef37e9de5ad6a6ffa12b172fce32868346b86502cbf949bd18092",
+    "side": "both"
+  },
+  {
+    "archive": "TFP_MapRendering.zip",
+    "name": "TFP_MapRendering",
+    "names": [
+      "TFP_MapRendering"
+    ],
+    "url": "https://disk.yandex.ru/d/wN-lkrRsoWUipA",
+    "sha256": "4e369f126359096c0a984f8b8a90640a5951f460dea7b2538fc9c9b017ab3da4",
+    "side": "both"
+  },
+  {
+    "archive": "TFP_WebServer.zip",
+    "name": "TFP_WebServer",
+    "names": [
+      "TFP_WebServer"
+    ],
+    "url": "https://disk.yandex.ru/d/x-FzfBIheaYVPw",
+    "sha256": "48d5ecbeda26bb6487979a2aaf6d7b2a30a53b4358a0b20bd0d8435d804a3311",
+    "side": "both"
+  },
+  {
     "archive": "-2.6-N.V.A-weapons-expansion-Server-side-.zip",
     "name": "-2.6-N.V.A-weapons-expansion-Server-side- (2 mods)",
     "names": [
