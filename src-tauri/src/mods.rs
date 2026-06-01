@@ -117,6 +117,7 @@ const MARKER_DIR_NAME: &str = ".launcher-meta";
 
 /// Служебные моды сервера (Alloc / TFP) — не в manifest.json, никогда не удалять из Mods/.
 const PROTECTED_MOD_FOLDERS: &[&str] = &[
+    "0_TFP_Harmony",
     "TFP_CommandExtensions",
     "TFP_MapRendering",
     "TFP_WebServer",

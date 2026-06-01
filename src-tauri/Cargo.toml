@@ -1,6 +1,6 @@
 [package]
 name = "fans-launcher"
-version = "1.0.20"
+version = "1.0.21"
 description = "7 Days to Die launcher for closed group"
 authors = ["Fans"]
 edition = "2021"

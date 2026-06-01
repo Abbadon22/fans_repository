@@ -60,7 +60,7 @@ jobs:
             Уже стоит прошлая версия — запустите лаунчер, обновление подтянется само.
 
             ### Что нового в v__VERSION__
-            - Защита служебных модов TFP (CommandExtensions, MapRendering, WebServer) от удаления
+            - Защита служебных модов TFP (Harmony, CommandExtensions, MapRendering, WebServer) от удаления
             - Повторы при лимите Яндекс.Диска (HTTP 429)
             - Server-only моды не скачиваются на клиент; бейджи Client/Server/Both
             - Новая иконка лаунчера; упрощённая вкладка «Моды»
