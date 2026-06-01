@@ -3,11 +3,11 @@
     "archive": "-2.6-N.V.A-weapons-expansion-Server-side-.zip",
     "name": "-2.6-N.V.A-weapons-expansion-Server-side- (2 mods)",
     "names": [
-      "[1]EXPANSÃO_ARMAS_[N.V.A]-(2.6)",
-      "[2]BANCADA DE MUTAÇÃO-(2.6)"
+      "Ammunation",
+      "Mutation"
     ],
     "url": "https://disk.yandex.ru/d/Ms7FGNtemx8DgQ",
-    "sha256": "1830cfe4599e592220394eb89ad0606c65d9a4e697840a340a5fd7fa5b47292c",
+    "sha256": "609045d4ec0f26486d9a0c06b6a262b933945ce776bac359e6cfff95c64a035e",
     "side": "server"
   },
   {

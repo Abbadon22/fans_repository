@@ -112,33 +112,6 @@ export function MainHero({
     else if (id === "mods") onGoToMods();
   };
 
-  const checks = [
-    {
-      done: hasFolder,
-      title: "Папка с игрой",
-      detail: hasFolder ? "Указана" : "Не выбрана",
-      action: !hasFolder ? "Выбрать" : "Сменить",
-      onClick: onSelectFolder,
-    },
-    {
-      done: hasFolder && isReady && pendingInstall === 0,
-      title: "Модпак сервера",
-      detail:
-        manifestCount > 0
-          ? `${modOkCount} / ${manifestCount}${pendingInstall > 0 ? ` (+${pendingInstall})` : ""}`
-          : "—",
-      action: "Открыть",
-      onClick: onGoToMods,
-    },
-    {
-      done: isReady && !gameRunning,
-      title: "Готов к запуску",
-      detail: isReady ? "Да" : gameRunning ? "Игра открыта" : "Нет",
-      action: null,
-      onClick: undefined,
-    },
-  ];
-
   return (
     <section className="panel relative flex min-h-0 flex-1 flex-col overflow-hidden p-0">
       <div
@@ -198,43 +171,6 @@ export function MainHero({
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-line bg-void/50 p-2.5">
-          <p className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-500">
-            Проверки
-          </p>
-          <ul className="flex min-h-0 flex-1 flex-col justify-center gap-2">
-            {checks.map((item) => (
-              <li
-                key={item.title}
-                className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 ${
-                  item.done ? "border-mint/20 bg-mint/5" : "border-line bg-panel/40"
-                }`}
-              >
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                    item.done ? "bg-mint/20 text-mint" : "bg-panel-raised text-gray-600"
-                  }`}
-                >
-                  {item.done ? "✓" : "·"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-gray-200">{item.title}</p>
-                  <p className="text-[10px] text-gray-500">{item.detail}</p>
-                </div>
-                {item.action && item.onClick && (
-                  <button
-                    type="button"
-                    className="btn-soft shrink-0 px-2 py-1 text-[10px]"
-                    onClick={item.onClick}
-                  >
-                    {item.action}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
         </div>
 
         {hasFolder && manifestCount > 0 && (
