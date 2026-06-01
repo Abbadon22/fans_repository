@@ -36,6 +36,11 @@ function mapDownloadProgress(p: DownloadProgressPayload): DownloadProgress {
   };
 }
 
+function isDownloadCancelled(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.toLowerCase().includes("отмен");
+}
+
 function derivePhase(s: Pick<LauncherState, "isChecking" | "isDownloading" | "isReady" | "gameDir"> & { hadError?: boolean }): LauncherPhase {
   if (!s.gameDir) return "no-folder";
   if (s.isChecking) return "checking";
@@ -49,6 +54,7 @@ const initialState: LauncherState = {
   phase: "boot",
   isChecking: false,
   isDownloading: false,
+  downloadPaused: false,
   progress: 0,
   downloadProgress: null,
   status: "Инициализация…",
@@ -187,6 +193,7 @@ export function useLauncher() {
     patch({
       isChecking: false,
       isDownloading: true,
+      downloadPaused: false,
       isReady: false,
       downloadProgress: null,
       status: "Загрузка и установка модов…",
@@ -206,6 +213,7 @@ export function useLauncher() {
       patch({
         modCheck: after,
         isDownloading: false,
+        downloadPaused: false,
         isReady: after.ok,
         progress: 100,
         downloadProgress: null,
@@ -218,17 +226,28 @@ export function useLauncher() {
         appendLog("После установки остались проблемы — см. вкладку «Моды»");
       }
     } catch (e) {
-      hadError.current = true;
+      const cancelled = isDownloadCancelled(e);
+      if (!cancelled) hadError.current = true;
       const msg = e instanceof Error ? e.message : String(e);
-      appendLog(`Ошибка установки: ${msg}`);
+      appendLog(cancelled ? msg : `Ошибка установки: ${msg}`);
+      let afterCheck: ModCheckResult | null = null;
+      if (cancelled) {
+        try {
+          afterCheck = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
+        } catch {
+          /* ignore */
+        }
+      }
       patch({
+        modCheck: afterCheck ?? state.modCheck,
         isDownloading: false,
-        isReady: false,
+        downloadPaused: false,
+        isReady: afterCheck?.ok ?? false,
         downloadProgress: null,
-        status: "Ошибка загрузки модов",
+        status: cancelled ? "Загрузка отменена" : "Ошибка загрузки модов",
       });
     }
-  }, [appendLog, patch, runModCheckOnly, state.gameDir, state.modCheck?.pending_install]);
+  }, [appendLog, patch, runModCheckOnly, state.gameDir, state.modCheck, state.modCheck?.pending_install]);
 
   const runModPipeline = runModCheckOnly;
 
@@ -308,6 +327,7 @@ export function useLauncher() {
     patch({
       isChecking: false,
       isDownloading: true,
+      downloadPaused: false,
       isReady: false,
       downloadProgress: null,
       status: "Переустановка всех модов…",
@@ -321,6 +341,7 @@ export function useLauncher() {
       patch({
         modCheck: after,
         isDownloading: false,
+        downloadPaused: false,
         isReady: after.ok,
         progress: 100,
         downloadProgress: null,
@@ -333,17 +354,61 @@ export function useLauncher() {
         appendLog("После переустановки остались проблемы — см. список модов");
       }
     } catch (e) {
-      hadError.current = true;
+      const cancelled = isDownloadCancelled(e);
+      if (!cancelled) hadError.current = true;
       const msg = e instanceof Error ? e.message : String(e);
-      appendLog(`Ошибка переустановки: ${msg}`);
+      appendLog(cancelled ? msg : `Ошибка переустановки: ${msg}`);
+      let afterCheck: ModCheckResult | null = null;
+      if (cancelled) {
+        try {
+          afterCheck = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
+        } catch {
+          /* ignore */
+        }
+      }
       patch({
+        modCheck: afterCheck ?? state.modCheck,
         isDownloading: false,
-        isReady: false,
+        downloadPaused: false,
+        isReady: afterCheck?.ok ?? false,
         downloadProgress: null,
-        status: "Ошибка переустановки",
+        status: cancelled ? "Загрузка отменена" : "Ошибка переустановки",
       });
     }
-  }, [appendLog, patch, state.gameDir, state.isDownloading, state.manifest.length]);
+  }, [appendLog, patch, state.gameDir, state.isDownloading, state.manifest.length, state.modCheck]);
+
+  const pauseDownload = useCallback(async () => {
+    if (!state.isDownloading || state.downloadPaused) return;
+    try {
+      await invoke("pause_download");
+      patch({ downloadPaused: true, status: "Загрузка на паузе" });
+      appendLog("Загрузка приостановлена");
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog, patch, state.downloadPaused, state.isDownloading]);
+
+  const resumeDownload = useCallback(async () => {
+    if (!state.isDownloading || !state.downloadPaused) return;
+    try {
+      await invoke("resume_download");
+      patch({ downloadPaused: false, status: "Загрузка и установка модов…" });
+      appendLog("Загрузка продолжена");
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog, patch, state.downloadPaused, state.isDownloading]);
+
+  const cancelDownload = useCallback(async () => {
+    if (!state.isDownloading) return;
+    try {
+      await invoke("cancel_download");
+      patch({ downloadPaused: false });
+      appendLog("Отмена загрузки…");
+    } catch (e) {
+      appendLog(e instanceof Error ? e.message : String(e));
+    }
+  }, [appendLog, patch, state.isDownloading]);
 
   const retryMods = useCallback(async () => {
     const check = await runModCheckOnly();
@@ -562,6 +627,9 @@ export function useLauncher() {
     installMissingMods,
     removeMod,
     reinstallAllMods,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
     refreshModsCheck,
     openGameFolder,
     openModsFolder,

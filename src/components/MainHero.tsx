@@ -1,4 +1,5 @@
-import type { LauncherPhase } from "../types";
+import type { DownloadProgress, LauncherPhase } from "../types";
+import { DownloadControls } from "./DownloadControls";
 import { StatusBadge } from "./StatusBadge";
 
 export type MainStepId = "folder" | "mods" | "play";
@@ -14,8 +15,14 @@ interface MainHeroProps {
   modOkCount: number;
   pendingInstall: number;
   gameDir: string | null;
+  isDownloading: boolean;
+  downloadProgress: DownloadProgress | null;
+  downloadPaused: boolean;
   onSelectFolder: () => void;
   onGoToMods: () => void;
+  onPauseDownload?: () => void;
+  onResumeDownload?: () => void;
+  onCancelDownload?: () => void;
 }
 
 const STEPS: { id: MainStepId; label: string; hint: string }[] = [
@@ -50,35 +57,55 @@ export function MainHero({
   modOkCount,
   pendingInstall,
   gameDir,
+  isDownloading,
+  downloadProgress,
+  downloadPaused,
   onSelectFolder,
   onGoToMods,
+  onPauseDownload,
+  onResumeDownload,
+  onCancelDownload,
 }: MainHeroProps) {
   const current = activeStep(hasFolder, isReady, busy, pendingInstall);
   const currentIdx = stepIndex(current);
   const modPercent =
     manifestCount > 0 ? Math.round((modOkCount / manifestCount) * 100) : 0;
 
+  const downloadPercent = downloadProgress
+    ? Math.round(downloadProgress.percent)
+    : modPercent;
+
+  const ringPercent = isDownloading ? downloadPercent : modPercent;
+
   const headline = gameRunning
     ? "Игра запущена"
-    : isReady
-      ? "Всё готово — можно играть"
-      : busy
-        ? status
-        : !hasFolder
-          ? "Добро пожаловать"
-          : pendingInstall > 0
-            ? "Осталось установить моды"
-            : "Завершите проверку модпака";
+    : isDownloading
+      ? downloadPaused
+        ? "Загрузка на паузе"
+        : status.includes("Переустановка")
+          ? "Переустановка модпака"
+          : "Загрузка модов"
+      : isReady
+        ? "Всё готово — можно играть"
+        : busy
+          ? status
+          : !hasFolder
+            ? "Добро пожаловать"
+            : pendingInstall > 0
+              ? "Осталось установить моды"
+              : "Завершите проверку модпака";
 
   const subline = gameRunning
     ? "Закройте игру, чтобы снова запустить лаунчер"
-    : isReady
-      ? "Всё настроено — запуск внизу"
-      : !hasFolder
-        ? "Папка Steam с 7 Days to Die"
-        : pendingInstall > 0
-          ? `${modOkCount} из ${manifestCount} · осталось ${pendingInstall}`
-          : "Вкладка «Моды» или «Повторить»";
+    : isDownloading && downloadProgress
+      ? `${downloadProgress.modIndex + 1} из ${downloadProgress.modTotal} · ${downloadProgress.modName}`
+      : isReady
+        ? "Всё настроено — запуск внизу"
+        : !hasFolder
+          ? "Папка Steam с 7 Days to Die"
+          : pendingInstall > 0
+            ? `${modOkCount} из ${manifestCount} · осталось ${pendingInstall}`
+            : "Вкладка «Моды» или «Повторить»";
 
   const onStepClick = (id: MainStepId) => {
     if (id === "folder") onSelectFolder();
@@ -139,25 +166,36 @@ export function MainHero({
           <StatusBadge phase={phase} />
         </div>
 
-        <div className="flex shrink-0 items-start gap-3">
+        <div className="flex shrink-0 items-center gap-4">
           <ReadinessRing
-            percent={hasFolder ? modPercent : 0}
-            ready={isReady && !gameRunning}
-            active={busy}
+            percent={hasFolder ? ringPercent : 0}
+            ready={isReady && !gameRunning && !isDownloading}
+            active={isDownloading || (busy && !downloadPaused)}
+            paused={downloadPaused}
             running={gameRunning}
           />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold leading-tight text-white">{headline}</h1>
-            <p className="mt-1 text-xs leading-relaxed text-gray-400">{subline}</p>
-            {gameDir && (
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-lg font-bold leading-snug text-white">{headline}</h1>
+            <p className="line-clamp-2 text-xs leading-snug text-gray-400">{subline}</p>
+            {gameDir && !isDownloading && (
               <button
                 type="button"
-                className="mt-1.5 block max-w-full truncate text-left font-mono text-[10px] text-gray-600 hover:text-brand"
+                className="block max-w-full truncate text-left font-mono text-[10px] text-gray-600 hover:text-brand"
                 title={gameDir}
                 onClick={onSelectFolder}
               >
                 {gameDir}
               </button>
+            )}
+            {isDownloading && onPauseDownload && onResumeDownload && onCancelDownload && (
+              <div className="pt-1">
+                <DownloadControls
+                  paused={downloadPaused}
+                  onPause={onPauseDownload}
+                  onResume={onResumeDownload}
+                  onCancel={onCancelDownload}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -277,20 +315,30 @@ function ReadinessRing({
   percent,
   ready,
   active,
+  paused,
   running,
 }: {
   percent: number;
   ready: boolean;
   active: boolean;
+  paused?: boolean;
   running: boolean;
 }) {
   const r = 34;
   const c = 2 * Math.PI * r;
   const offset = c - (Math.min(100, Math.max(0, percent)) / 100) * c;
-  const stroke = running || ready ? "#34d399" : active ? "#38bdf8" : "#10b981";
+  const stroke = running
+    ? "#34d399"
+    : ready
+      ? "#34d399"
+      : paused
+        ? "#f59e0b"
+        : active
+          ? "#38bdf8"
+          : "#10b981";
 
   return (
-    <div className="relative flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center">
+    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
       <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden>
         <circle cx="50" cy="50" r={r} fill="none" className="stroke-void" strokeWidth="6" />
         <circle
@@ -303,17 +351,22 @@ function ReadinessRing({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={offset}
+          className="transition-all duration-300"
         />
       </svg>
       <div
-        className={`relative flex h-12 w-12 flex-col items-center justify-center rounded-xl ring-1 ring-white/10 ${
+        className={`relative flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-xl ring-1 ring-white/10 ${
           ready || running
             ? "bg-gradient-to-br from-mint/25 to-brand/15"
-            : "bg-gradient-to-br from-panel-raised to-void/80"
+            : paused
+              ? "bg-gradient-to-br from-amber-500/20 to-void/80"
+              : active
+                ? "bg-gradient-to-br from-sky/20 to-brand/15"
+                : "bg-gradient-to-br from-panel-raised to-void/80"
         }`}
       >
-        <span className="text-sm font-black text-white">
-          {running ? "●" : ready ? "✓" : `${percent}%`}
+        <span className="text-sm font-bold tabular-nums text-white">
+          {running ? "●" : ready ? "✓" : paused ? "‖" : `${percent}%`}
         </span>
       </div>
     </div>

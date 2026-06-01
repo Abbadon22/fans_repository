@@ -1,4 +1,6 @@
 use crate::config::LauncherConfig;
+use crate::download_control::DownloadControl;
+use std::sync::Arc;
 use crate::process_util::is_7dtd_running;
 #[cfg(target_os = "windows")]
 use crate::process_util::platform;
@@ -15,6 +17,7 @@ use tokio::sync::Mutex;
 /// Глобальное состояние приложения (кэш конфига).
 pub struct AppState {
     pub config: Mutex<LauncherConfig>,
+    pub download: Arc<DownloadControl>,
 }
 
 fn emit_log(app: &AppHandle, message: &str) {
@@ -191,8 +194,14 @@ pub async fn download_and_install_mods(
         );
     }
 
-    let result =
-        download_and_install_mods_internal(app.clone(), config, to_install).await;
+    state.download.reset();
+    let result = download_and_install_mods_internal(
+        app.clone(),
+        config,
+        to_install,
+        state.download.clone(),
+    )
+    .await;
 
     if let Err(ref e) = result {
         emit_log(&app, &format!("Ошибка: {e}"));
@@ -261,8 +270,14 @@ pub async fn reinstall_all_mods(
 
     clear_all_manifest_mods(&app, &config, &loaded.entries)?;
 
-    let result =
-        download_and_install_mods_internal(app.clone(), config, loaded.entries).await;
+    state.download.reset();
+    let result = download_and_install_mods_internal(
+        app.clone(),
+        config,
+        loaded.entries,
+        state.download.clone(),
+    )
+    .await;
 
     if let Err(ref e) = result {
         emit_log(&app, &format!("Ошибка переустановки: {e}"));
@@ -273,6 +288,29 @@ pub async fn reinstall_all_mods(
     }
 
     result
+}
+
+/// Приостановить загрузку модов.
+#[tauri::command]
+pub async fn pause_download(state: State<'_, AppState>) -> Result<(), String> {
+    state.download.pause();
+    Ok(())
+}
+
+/// Продолжить загрузку модов.
+#[tauri::command]
+pub async fn resume_download(state: State<'_, AppState>) -> Result<(), String> {
+    state.download.resume();
+    Ok(())
+}
+
+/// Отменить загрузку модов.
+#[tauri::command]
+pub async fn cancel_download(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    state.download.cancel();
+    emit_log(&app, "Загрузка отменена пользователем");
+    let _ = app.emit("progress", 0.0);
+    Ok(())
 }
 
 /// Запущен ли процесс 7DaysToDie.exe.

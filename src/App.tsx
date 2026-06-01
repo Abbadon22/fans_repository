@@ -20,6 +20,9 @@ export default function App() {
     installMissingMods,
     removeMod,
     reinstallAllMods,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
     refreshModsCheck,
     openGameFolder,
     openModsFolder,
@@ -101,6 +104,7 @@ export default function App() {
             showProgress={showProgress || showCheckingBar}
             showCheckingBar={showCheckingBar}
             downloadProgress={state.downloadProgress}
+            downloadPaused={state.downloadPaused}
             playBlocked={playBlocked}
             playBlockHint={playBlockHint}
             showInstall={needsModsInstall}
@@ -113,6 +117,9 @@ export default function App() {
             onInstall={() => void installMissingMods()}
             onOpenGameFolder={() => void openGameFolder()}
             onOpenModsFolder={() => void openModsFolder()}
+            onPauseDownload={() => void pauseDownload()}
+            onResumeDownload={() => void resumeDownload()}
+            onCancelDownload={() => void cancelDownload()}
           />
         )}
 
@@ -125,11 +132,15 @@ export default function App() {
             showProgress={showProgress || showCheckingBar}
             showCheckingBar={showCheckingBar}
             downloadProgress={state.downloadProgress}
+            downloadPaused={state.downloadPaused}
             pendingInstall={pendingInstall}
             onRefresh={refreshModsCheck}
             onOpenModsFolder={() => void openModsFolder()}
             onRemoveMod={(name) => void removeMod(name)}
             onReinstallAll={() => void reinstallAllMods()}
+            onPauseDownload={() => void pauseDownload()}
+            onResumeDownload={() => void resumeDownload()}
+            onCancelDownload={() => void cancelDownload()}
           />
         )}
 

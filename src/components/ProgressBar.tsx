@@ -1,13 +1,26 @@
 import type { DownloadProgress } from "../types";
 import { formatBytes, formatEta, formatSpeed } from "../utils/format";
+import { DownloadControls } from "./DownloadControls";
 
 interface ProgressBarProps {
   progress: DownloadProgress | null;
   visible: boolean;
   checking?: boolean;
+  paused?: boolean;
+  onPause?: () => void;
+  onResume?: () => void;
+  onCancel?: () => void;
 }
 
-export function ProgressBar({ progress, visible, checking }: ProgressBarProps) {
+export function ProgressBar({
+  progress,
+  visible,
+  checking,
+  paused = false,
+  onPause,
+  onResume,
+  onCancel,
+}: ProgressBarProps) {
   if (!visible) return null;
 
   if (checking && !progress) {
@@ -27,33 +40,53 @@ export function ProgressBar({ progress, visible, checking }: ProgressBarProps) {
   const hasTotal = progress.totalBytes > 0;
   const modStep =
     progress.modTotal > 0
-      ? ` · мод ${Math.min(progress.modIndex + 1, progress.modTotal)}/${progress.modTotal}`
+      ? `Мод ${Math.min(progress.modIndex + 1, progress.modTotal)} из ${progress.modTotal}`
       : "";
 
+  const showControls = onPause && onResume && onCancel;
+
   return (
-    <div className="panel shrink-0 space-y-1.5 px-3 py-2">
-      <div className="flex justify-between gap-2 text-xs">
-        <div className="min-w-0">
-          <p className="font-medium text-white">Загрузка{modStep}</p>
-          <p className="truncate text-gray-500">{progress.modName}</p>
+    <div className="panel shrink-0 space-y-2 px-3 py-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-white">
+            {paused ? "Пауза" : "Загрузка"}
+            {modStep && <span className="font-normal text-gray-500"> · {modStep}</span>}
+          </p>
+          <p className="truncate text-xs text-gray-500">{progress.modName}</p>
         </div>
-        <span className="text-xl font-bold tabular-nums text-brand">{clamped.toFixed(0)}%</span>
+        <span className="shrink-0 text-2xl font-bold tabular-nums leading-none text-brand">
+          {clamped.toFixed(0)}%
+        </span>
       </div>
+
       <div className="h-2 overflow-hidden rounded-full bg-void">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-brand-dim to-brand transition-all duration-200"
+          className={`h-full rounded-full bg-gradient-to-r from-brand-dim to-brand transition-all duration-200 ${
+            paused ? "opacity-60" : ""
+          }`}
           style={{ width: `${clamped}%` }}
         />
       </div>
+
       <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-500">
         <span>
           {hasTotal
             ? `${formatBytes(progress.downloadedBytes)} / ${formatBytes(progress.totalBytes)}`
             : formatBytes(progress.downloadedBytes)}
         </span>
-        <span className="text-center">{formatSpeed(progress.speedBps)}</span>
-        <span className="text-right">{formatEta(progress.etaSeconds)}</span>
+        <span className="text-center">{paused ? "—" : formatSpeed(progress.speedBps)}</span>
+        <span className="text-right">{paused ? "пауза" : formatEta(progress.etaSeconds)}</span>
       </div>
+
+      {showControls && (
+        <DownloadControls
+          paused={paused}
+          onPause={onPause}
+          onResume={onResume}
+          onCancel={onCancel}
+        />
+      )}
     </div>
   );
 }

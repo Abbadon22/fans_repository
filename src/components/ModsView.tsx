@@ -13,11 +13,15 @@ interface ModsViewProps {
   showProgress: boolean;
   showCheckingBar: boolean;
   downloadProgress: DownloadProgress | null;
+  downloadPaused: boolean;
   pendingInstall: number;
   onRefresh: () => void;
   onOpenModsFolder: () => void;
   onRemoveMod: (modName: string) => void;
   onReinstallAll: () => void;
+  onPauseDownload: () => void;
+  onResumeDownload: () => void;
+  onCancelDownload: () => void;
 }
 
 export function ModsView({
@@ -28,11 +32,15 @@ export function ModsView({
   showProgress,
   showCheckingBar,
   downloadProgress,
+  downloadPaused,
   pendingInstall,
   onRefresh,
   onOpenModsFolder,
   onRemoveMod,
   onReinstallAll,
+  onPauseDownload,
+  onResumeDownload,
+  onCancelDownload,
 }: ModsViewProps) {
   const items = modStatuses(manifest, modCheck);
   const okCount = items.filter((i) => i.status === "ok").length;
@@ -81,7 +89,15 @@ export function ModsView({
         )}
 
         {(showProgress || showCheckingBar) && (
-          <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
+          <ProgressBar
+            progress={downloadProgress}
+            visible
+            checking={showCheckingBar}
+            paused={downloadPaused}
+            onPause={onPauseDownload}
+            onResume={onResumeDownload}
+            onCancel={onCancelDownload}
+          />
         )}
 
         <ModsPanel

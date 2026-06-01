@@ -61,6 +61,7 @@ export interface LauncherState {
   phase: LauncherPhase;
   isChecking: boolean;
   isDownloading: boolean;
+  downloadPaused: boolean;
   progress: number;
   downloadProgress: DownloadProgress | null;
   status: string;

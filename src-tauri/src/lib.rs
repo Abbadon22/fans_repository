@@ -1,10 +1,13 @@
 mod commands;
 mod config;
+mod download_control;
 mod mods;
 mod process_util;
 
 use commands::AppState;
 use config::LauncherConfig;
+use std::sync::Arc;
+use download_control::DownloadControl;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,6 +19,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             config: tokio::sync::Mutex::new(initial_config),
+            download: Arc::new(DownloadControl::default()),
         })
         .invoke_handler(tauri::generate_handler![
             commands::select_game_folder,
@@ -36,6 +40,9 @@ pub fn run() {
             commands::get_steam_connect_url,
             commands::open_steam_connect,
             commands::open_mods_folder,
+            commands::pause_download,
+            commands::resume_download,
+            commands::cancel_download,
         ])
         .setup(|_| Ok(()))
         .run(tauri::generate_context!())

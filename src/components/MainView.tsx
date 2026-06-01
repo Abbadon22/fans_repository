@@ -25,6 +25,7 @@ interface MainViewProps {
   showProgress: boolean;
   showCheckingBar: boolean;
   downloadProgress: DownloadProgress | null;
+  downloadPaused: boolean;
   playBlocked: boolean;
   playBlockHint?: string;
   showInstall: boolean;
@@ -37,6 +38,9 @@ interface MainViewProps {
   onInstall: () => void;
   onOpenGameFolder: () => void;
   onOpenModsFolder: () => void;
+  onPauseDownload: () => void;
+  onResumeDownload: () => void;
+  onCancelDownload: () => void;
 }
 
 export function MainView({
@@ -56,6 +60,7 @@ export function MainView({
   showProgress,
   showCheckingBar,
   downloadProgress,
+  downloadPaused,
   playBlocked,
   playBlockHint,
   showInstall,
@@ -68,7 +73,11 @@ export function MainView({
   onInstall,
   onOpenGameFolder,
   onOpenModsFolder,
+  onPauseDownload,
+  onResumeDownload,
+  onCancelDownload,
 }: MainViewProps) {
+  const isDownloading = busy && !showCheckingBar && downloadProgress != null;
   const okCount = modCheck?.ok ? manifestCount : manifestOkCount;
   const showRemovedBanner =
     hasFolder && removedMods.length > 0 && !busy && isReady && pendingInstall === 0;
@@ -91,12 +100,26 @@ export function MainView({
             modOkCount={okCount}
             pendingInstall={pendingInstall}
             gameDir={gameDir}
+            isDownloading={isDownloading}
+            downloadProgress={downloadProgress}
+            downloadPaused={downloadPaused}
             onSelectFolder={onSelectFolder}
             onGoToMods={onGoToMods}
+            onPauseDownload={onPauseDownload}
+            onResumeDownload={onResumeDownload}
+            onCancelDownload={onCancelDownload}
           />
 
           {(showProgress || showCheckingBar) && (
-            <ProgressBar progress={downloadProgress} visible checking={showCheckingBar} />
+            <ProgressBar
+              progress={downloadProgress}
+              visible
+              checking={showCheckingBar}
+              paused={downloadPaused}
+              onPause={onPauseDownload}
+              onResume={onResumeDownload}
+              onCancel={onCancelDownload}
+            />
           )}
 
           {showRemovedBanner && (
