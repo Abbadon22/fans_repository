@@ -62,6 +62,8 @@ export type LauncherPhase =
   | "ready"
   | "error";
 
+import type { AppUpdateInfo } from "./updates";
+
 /** Состояние UI лаунчера. */
 export interface LauncherState {
   phase: LauncherPhase;
@@ -78,6 +80,11 @@ export interface LauncherState {
   config: LauncherConfig | null;
   manifest: ModManifestEntry[];
   manifestSource: string | null;
+  /** Список модов на сервере изменился с прошлого подтверждения. */
+  manifestListChanged: boolean;
   modCheck: ModCheckResult | null;
   gameRunning: boolean;
+  /** Доступное обновление лаунчера (без автоустановки). */
+  appUpdate: AppUpdateInfo | null;
+  isInstallingAppUpdate: boolean;
 }

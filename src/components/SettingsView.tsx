@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { LauncherConfig } from "../types";
+import type { AppUpdateInfo } from "../types/updates";
 import { APP_VERSION, FAN_MANIFEST_URL, FAN_SERVER_HOST, FAN_SERVER_PORT, RELEASES_URL, WHATS_NEW } from "../constants";
 import { ViewHeader } from "./ViewHeader";
 
@@ -10,7 +11,9 @@ interface SettingsViewProps {
   gameDir: string | null;
   manifestCount: number;
   manifestSource: string | null;
+  appUpdate: AppUpdateInfo | null;
   busy: boolean;
+  installingLauncher?: boolean;
   onSelectFolder: () => void;
   onOpenGameFolder: () => void;
   onOpenModsFolder: () => void;
@@ -18,6 +21,7 @@ interface SettingsViewProps {
   onSavePassword: (password: string) => Promise<void>;
   onSaveAutoSteamConnect: (enabled: boolean) => Promise<void>;
   onCheckAppUpdate: () => void;
+  onInstallAppUpdate: () => void;
 }
 
 export function SettingsView({
@@ -26,7 +30,9 @@ export function SettingsView({
   gameDir,
   manifestCount,
   manifestSource,
+  appUpdate,
   busy,
+  installingLauncher,
   onSelectFolder,
   onOpenGameFolder,
   onOpenModsFolder,
@@ -34,6 +40,7 @@ export function SettingsView({
   onSavePassword,
   onSaveAutoSteamConnect,
   onCheckAppUpdate,
+  onInstallAppUpdate,
 }: SettingsViewProps) {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -145,22 +152,43 @@ export function SettingsView({
           <div className="grid grid-cols-2 items-stretch gap-3">
             <SettingCard title="Обновления" stretch footer={
               <>
-                <button
-                  type="button"
-                  className="btn-soft border-brand/40 bg-brand/15 font-semibold text-brand"
-                  onClick={() => void openUrl(RELEASES_URL)}
-                >
-                  Скачать установщик
-                </button>
-                <button type="button" className="btn-soft" disabled={busy} onClick={onCheckAppUpdate}>
+                {appUpdate ? (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={busy || installingLauncher}
+                    onClick={onInstallAppUpdate}
+                  >
+                    {installingLauncher ? "Установка…" : `Обновить до ${appUpdate.version}`}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-soft border-brand/40 bg-brand/15 font-semibold text-brand"
+                    onClick={() => void openUrl(RELEASES_URL)}
+                  >
+                    Скачать установщик
+                  </button>
+                )}
+                <button type="button" className="btn-soft" disabled={busy || installingLauncher} onClick={onCheckAppUpdate}>
                   Проверить
                 </button>
               </>
             }>
-              <p className="text-xs leading-relaxed text-gray-500">
-                Установленная копия обновляется сама. Новым игрокам — только{" "}
-                <span className="font-mono text-gray-400">*-setup.exe</span> с Releases.
-              </p>
+              {appUpdate ? (
+                <p className="text-sm font-semibold text-sky-300">
+                  Доступна {appUpdate.version}
+                  <span className="mt-1 block text-xs font-normal text-gray-500">
+                    У вас {appUpdate.currentVersion}. Уведомление также вверху окна.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-xs leading-relaxed text-gray-500">
+                  При запуске лаунчер проверяет обновления и показывает панель уведомлений.
+                  Новым игрокам —{" "}
+                  <span className="font-mono text-gray-400">*-setup.exe</span> с Releases.
+                </p>
+              )}
             </SettingCard>
 
             <SettingCard title="Манифест модов" stretch footer={

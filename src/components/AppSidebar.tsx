@@ -4,6 +4,8 @@ interface AppSidebarProps {
   view: AppView;
   onViewChange: (view: AppView) => void;
   modsBadge?: number;
+  settingsBadge?: number;
+  notificationCount?: number;
   isReady: boolean;
   pendingInstall: number;
 }
@@ -19,6 +21,8 @@ export function AppSidebar({
   view,
   onViewChange,
   modsBadge,
+  settingsBadge,
+  notificationCount = 0,
   isReady,
   pendingInstall,
 }: AppSidebarProps) {
@@ -41,7 +45,13 @@ export function AppSidebar({
             aria-hidden
           />
           <span className="truncate text-xs text-gray-500">
-            {isReady ? "Готов" : pendingInstall > 0 ? `${pendingInstall} к загрузке` : "Настройка"}
+            {isReady
+              ? "Готов"
+              : notificationCount > 0
+                ? `${notificationCount} уведомл.`
+                : pendingInstall > 0
+                  ? `${pendingInstall} к загрузке`
+                  : "Настройка"}
           </span>
         </div>
       </div>
@@ -53,7 +63,13 @@ export function AppSidebar({
             active={view === item.id}
             label={item.label}
             icon={item.icon}
-            badge={item.id === "mods" ? modsBadge : undefined}
+            badge={
+              item.id === "mods"
+                ? modsBadge
+                : item.id === "settings"
+                  ? settingsBadge
+                  : undefined
+            }
             onClick={() => onViewChange(item.id)}
           />
         ))}

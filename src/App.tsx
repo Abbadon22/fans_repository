@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppFooter } from "./components/AppFooter";
 import { AppSidebar } from "./components/AppSidebar";
 import { CustomTitlebar, type AppView } from "./components/CustomTitlebar";
@@ -6,12 +6,19 @@ import { MainView } from "./components/MainView";
 import { ModsView } from "./components/ModsView";
 import { LogView } from "./components/LogView";
 import { SettingsView } from "./components/SettingsView";
+import { UpdateNotificationsBar } from "./components/UpdateNotificationsBar";
+import { useModal } from "./context/ModalContext";
+import { useDismissedNotifications } from "./hooks/useDismissedNotifications";
 import { useLauncher } from "./hooks/useLauncher";
+import type { UpdateNotification, UpdateNotificationAction } from "./types/updates";
+import { buildUpdateNotifications } from "./utils/updateNotifications";
 import { clientInstallRows, modStatuses } from "./utils/mods";
 
 export default function App() {
   const [view, setView] = useState<AppView>("main");
   const autoModsNavDone = useRef(false);
+  const { alert: showAlert } = useModal();
+  const { dismissedIds, dismiss } = useDismissedNotifications();
   const {
     state,
     selectFolder,
@@ -31,7 +38,9 @@ export default function App() {
     saveAutoSteamConnect,
     exportLogs,
     clearLogs,
-    checkAppUpdate,
+    checkForAppUpdate,
+    installLauncherUpdate,
+    acknowledgeManifestListUpdate,
   } = useLauncher();
 
   const busy = state.isChecking || state.isDownloading;
@@ -50,13 +59,89 @@ export default function App() {
   const needsModsInstall =
     state.gameDir !== null && !state.isReady && !busy && pendingInstall > 0;
 
+  const updateNotifications = useMemo(
+    () =>
+      buildUpdateNotifications({
+        appUpdate: state.appUpdate,
+        modCheck: state.modCheck,
+        gameDir: state.gameDir,
+        manifestListChanged: state.manifestListChanged,
+        manifestCount: state.manifest.length,
+        busy,
+        dismissedIds,
+      }),
+    [
+      busy,
+      dismissedIds,
+      state.appUpdate,
+      state.gameDir,
+      state.manifest.length,
+      state.manifestListChanged,
+      state.modCheck,
+    ],
+  );
+
+  const handleNotificationDismiss = useCallback(
+    (notification: UpdateNotification) => {
+      if (notification.kind === "manifest") {
+        acknowledgeManifestListUpdate();
+      }
+      dismiss(notification.id);
+    },
+    [acknowledgeManifestListUpdate, dismiss],
+  );
+
+  const handleNotificationAction = useCallback(
+    (action: UpdateNotificationAction, notification: UpdateNotification) => {
+      switch (action) {
+        case "install_launcher":
+          void installLauncherUpdate();
+          break;
+        case "install_mods":
+          void installMissingMods();
+          break;
+        case "go_mods":
+          setView("mods");
+          break;
+        case "refresh_manifest":
+          refreshModsCheck();
+          break;
+        case "dismiss":
+          handleNotificationDismiss(notification);
+          break;
+      }
+    },
+    [
+      handleNotificationDismiss,
+      installLauncherUpdate,
+      installMissingMods,
+      refreshModsCheck,
+    ],
+  );
+
+  const handleCheckAppUpdate = useCallback(async () => {
+    const info = await checkForAppUpdate();
+    if (info) {
+      await showAlert({
+        title: "Обновление лаунчера",
+        message: `Доступна версия ${info.version} (у вас ${info.currentVersion}).\n\nНажмите «Обновить лаунчер» в панели уведомлений вверху окна.`,
+      });
+    } else {
+      await showAlert({
+        title: "Обновления",
+        message: "Установлена последняя версия лаунчера.",
+      });
+    }
+  }, [checkForAppUpdate, showAlert]);
+
   useEffect(() => {
     if (autoModsNavDone.current || busy || !needsModsInstall) return;
+    if (updateNotifications.some((n) => n.kind === "mods_install")) return;
     if (state.phase === "error" || (state.modCheck && !state.modCheck.ok)) {
       autoModsNavDone.current = true;
       setView("mods");
     }
-  }, [busy, needsModsInstall, state.modCheck, state.phase]);
+  }, [busy, needsModsInstall, state.modCheck, state.phase, updateNotifications]);
 
   const showFooter = view === "mods";
   const footerMode = view === "mods" ? "mods" : "main";
@@ -71,6 +156,8 @@ export default function App() {
           ? "Дождитесь проверки модов или исправьте ошибки"
           : undefined;
 
+  const notificationCount = updateNotifications.length;
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <CustomTitlebar />
@@ -80,11 +167,22 @@ export default function App() {
           view={view}
           onViewChange={setView}
           modsBadge={missingModsCount > 0 ? missingModsCount : undefined}
+          settingsBadge={state.appUpdate ? 1 : undefined}
+          notificationCount={notificationCount}
           isReady={state.isReady}
           pendingInstall={pendingInstall}
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <UpdateNotificationsBar
+            notifications={updateNotifications}
+            busy={busy}
+            installingLauncher={state.isInstallingAppUpdate}
+            onAction={handleNotificationAction}
+            onDismiss={handleNotificationDismiss}
+          />
+
+          <div className="min-h-0 flex-1 overflow-hidden">
         {view === "main" && (
           <MainView
             phase={state.phase}
@@ -157,16 +255,20 @@ export default function App() {
             gameDir={state.gameDir}
             manifestCount={state.manifest.length}
             manifestSource={state.manifestSource}
+            appUpdate={state.appUpdate}
             busy={busy}
+            installingLauncher={state.isInstallingAppUpdate}
             onSelectFolder={() => void selectFolder()}
             onOpenGameFolder={() => void openGameFolder()}
             onOpenModsFolder={() => void openModsFolder()}
             onOpenConfigFolder={() => void openConfigFolder()}
             onSavePassword={savePassword}
             onSaveAutoSteamConnect={saveAutoSteamConnect}
-            onCheckAppUpdate={() => void checkAppUpdate()}
+            onCheckAppUpdate={() => void handleCheckAppUpdate()}
+            onInstallAppUpdate={() => void installLauncherUpdate()}
           />
         )}
+          </div>
         </div>
       </div>
 

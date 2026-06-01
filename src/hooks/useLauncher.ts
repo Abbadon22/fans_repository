@@ -9,8 +9,14 @@ import type {
   ManifestLoadResult,
   ModCheckResult,
 } from "../types";
-import { checkAppUpdate } from "./useAppUpdater";
+import { checkForAppUpdate, installAppUpdate } from "./useAppUpdater";
 import { normalizeModCheck } from "../utils/modCheck";
+import {
+  acknowledgeManifestSig,
+  detectManifestListChange,
+  manifestSignature,
+} from "../utils/updateNotifications";
+import type { AppUpdateInfo } from "../types/updates";
 
 interface DownloadProgressPayload {
   percent: number;
@@ -65,8 +71,11 @@ const initialState: LauncherState = {
   config: null,
   manifest: [],
   manifestSource: null,
+  manifestListChanged: false,
   modCheck: null,
   gameRunning: false,
+  appUpdate: null,
+  isInstallingAppUpdate: false,
 };
 
 export function useLauncher() {
@@ -180,11 +189,17 @@ export function useLauncher() {
     try {
       const loaded = await invoke<ManifestLoadResult>("get_manifest");
       const check = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
+      const listChanged = detectManifestListChange(loaded.entries, loaded.source);
       patch({
         manifest: loaded.entries,
         manifestSource: loaded.source,
         modCheck: check,
+        manifestListChanged: listChanged,
       });
+      if (check.ok) {
+        acknowledgeManifestSig(manifestSignature(loaded.entries));
+        patch({ manifestListChanged: false });
+      }
       return check;
     } catch {
       return null;
@@ -305,10 +320,12 @@ export function useLauncher() {
         await invoke<ModCheckResult>("remove_mod", { modName });
         const loaded = await invoke<ManifestLoadResult>("get_manifest");
         const check = normalizeModCheck(await invoke<ModCheckResult>("check_mods"));
+        const listChanged = detectManifestListChange(loaded.entries, loaded.source);
         hadError.current = !check.ok;
         patch({
           manifest: loaded.entries,
           manifestSource: loaded.source,
+          manifestListChanged: listChanged,
           modCheck: check,
           isChecking: false,
           isReady: check.ok,
@@ -440,9 +457,11 @@ export function useLauncher() {
     void (async () => {
       try {
         const loaded = await invoke<ManifestLoadResult>("get_manifest");
+        const listChanged = detectManifestListChange(loaded.entries, loaded.source);
         patch({
           manifest: loaded.entries,
           manifestSource: loaded.source,
+          manifestListChanged: listChanged,
         });
         const check = await runCheckOnly();
         patch({
@@ -573,19 +592,33 @@ export function useLauncher() {
           invoke<ManifestLoadResult>("get_manifest"),
         ]);
 
+        const listChanged = detectManifestListChange(
+          manifestLoaded.entries,
+          manifestLoaded.source,
+        );
+        const appUpdate = await checkForAppUpdate();
+
         patch({
           gameDir: config.game_dir,
           configPath,
           config,
           manifest: manifestLoaded.entries,
           manifestSource: manifestLoaded.source,
+          manifestListChanged: listChanged,
+          appUpdate,
           phase: config.game_dir ? "checking" : "no-folder",
         });
 
         appendLog(`Конфиг: ${configPath}`);
         appendLog(`Манифест: ${manifestLoaded.source} (${manifestLoaded.entries.length} модов)`);
-
-        void checkAppUpdate(appendLog);
+        if (appUpdate) {
+          appendLog(
+            `Доступно обновление лаунчера ${appUpdate.version} (у вас ${appUpdate.currentVersion})`,
+          );
+        }
+        if (listChanged) {
+          appendLog("Список модов на сервере изменился — см. уведомления");
+        }
 
         if (!config.game_dir) {
           setStatus("Выберите папку с 7DaysToDie.exe");
@@ -611,6 +644,35 @@ export function useLauncher() {
     },
     [patch],
   );
+
+  const checkForAppUpdateManual = useCallback(async (): Promise<AppUpdateInfo | null> => {
+    const info = await checkForAppUpdate();
+    patch({ appUpdate: info });
+    if (info) {
+      appendLog(
+        `Доступно обновление лаунчера ${info.version} (у вас ${info.currentVersion})`,
+      );
+    } else {
+      appendLog("Обновлений лаунчера нет");
+    }
+    return info;
+  }, [appendLog, patch]);
+
+  const installLauncherUpdate = useCallback(async () => {
+    patch({ isInstallingAppUpdate: true });
+    try {
+      await installAppUpdate(appendLog);
+    } finally {
+      patch({ isInstallingAppUpdate: false });
+    }
+  }, [appendLog, patch]);
+
+  const acknowledgeManifestListUpdate = useCallback(() => {
+    if (state.manifest.length > 0) {
+      acknowledgeManifestSig(manifestSignature(state.manifest));
+    }
+    patch({ manifestListChanged: false });
+  }, [patch, state.manifest]);
 
   const exportLogs = useCallback(async () => {
     const text = state.logs.join("\n");
@@ -645,6 +707,8 @@ export function useLauncher() {
     saveAutoSteamConnect,
     exportLogs,
     clearLogs,
-    checkAppUpdate: () => checkAppUpdate(appendLog),
+    checkForAppUpdate: checkForAppUpdateManual,
+    installLauncherUpdate,
+    acknowledgeManifestListUpdate,
   };
 }

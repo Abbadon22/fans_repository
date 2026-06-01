@@ -2,7 +2,7 @@
 export const FAN_SERVER_HOST = "epyc2.worldhosts.fun";
 export const FAN_SERVER_PORT = 27681;
 export const FAN_WEB_PORT = 22499;
-export const APP_VERSION = "1.0.23";
+export const APP_VERSION = "1.0.24";
 
 /** Страница релизов — единственный способ скачать лаунчер для игроков. */
 export const RELEASES_URL =
@@ -19,6 +19,8 @@ export function isLegacyLocalServer(ip: string): boolean {
 
 /** Кратко — что нового в текущей версии (показывается в настройках). */
 export const WHATS_NEW: readonly string[] = [
+  "Панель уведомлений: обновления лаунчера, модов и manifest",
+  "Обновление лаунчера только по кнопке (без скрытой перезагрузки)",
   "Пауза, продолжение и отмена загрузки модов",
   "Удаление отдельного мода с диска (вкладка «Моды»)",
   "Полная переустановка всего модпака одной кнопкой",
